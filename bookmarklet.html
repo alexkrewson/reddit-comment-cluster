@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reddit Comment Cluster</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: system-ui, sans-serif;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 24px 16px;
+    background: #1a1a1b;
+    color: #d7dadc;
+    min-height: 100vh;
+  }
+  h1 { color: #ff4500; margin: 0 0 8px; font-size: 22px; }
+  .subtitle { color: #818384; margin: 0 0 24px; font-size: 14px; }
+  .input-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  input[type="url"], input[type="password"] {
+    flex: 1;
+    padding: 12px 14px;
+    background: #272729;
+    border: 1px solid #343536;
+    border-radius: 6px;
+    color: #d7dadc;
+    font-size: 15px;
+    outline: none;
+  }
+  input[type="url"]:focus, input[type="password"]:focus { border-color: #ff4500; }
+  input::placeholder { color: #818384; }
+  button.primary {
+    padding: 12px 20px;
+    background: #ff4500;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  button.primary:hover { background: #e03d00; }
+  button.primary:disabled { background: #5a2a1a; color: #888; cursor: not-allowed; }
+  #api-key-note { font-size: 13px; color: #818384; margin-bottom: 16px; }
+  #clear-key-btn { background: none; border: none; color: #ff4500; cursor: pointer; font-size: 13px; padding: 0; }
+  #status {
+    padding: 12px 14px;
+    background: #272729;
+    border-radius: 6px;
+    color: #818384;
+    font-size: 14px;
+    margin-bottom: 16px;
+    display: none;
+  }
+  #status.visible { display: block; }
+  #status.error { color: #ff6b6b; border-left: 3px solid #ff6b6b; }
+  #results { display: none; }
+  #results.visible { display: block; }
+  .results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .results-title { color: #ff4500; font-size: 17px; font-weight: bold; margin: 0; }
+  .results-meta { color: #818384; font-size: 13px; margin: 4px 0 0; }
+  #copy-btn {
+    padding: 9px 18px;
+    background: #46d160;
+    border: none;
+    border-radius: 6px;
+    color: #000;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  #copy-btn:hover { background: #3ab954; }
+  #output {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    background: #272729;
+    border: 1px solid #343536;
+    border-radius: 6px;
+    padding: 16px;
+    font-size: 14px;
+    line-height: 1.6;
+    font-family: monospace;
+  }
+</style>
+</head>
+<body>
+
+<h1>Reddit Comment Cluster</h1>
+<p class="subtitle">Paste any Reddit link to analyze and cluster the points made in comments.</p>
+
+<div id="api-key-row" class="input-row">
+  <input id="api-key-input" type="password" placeholder="Anthropic API key (sk-ant-…)" autocomplete="off" autocorrect="off" spellcheck="false">
+  <button id="save-key-btn" class="primary">Save Key</button>
+</div>
+<p id="api-key-note" style="display:none">
+  API key saved in browser. <button id="clear-key-btn">Clear</button>
+</p>
+
+<div class="input-row">
+  <input id="url-input" type="url" placeholder="Paste Reddit URL here…" autocomplete="off" autocorrect="off" spellcheck="false">
+  <button id="analyze-btn" class="primary">Analyze</button>
+</div>
+
+<div id="status"></div>
+
+<div id="results">
+  <div class="results-header">
+    <div>
+      <p class="results-title" id="results-title"></p>
+      <p class="results-meta" id="results-meta"></p>
+    </div>
+    <button id="copy-btn">Copy</button>
+  </div>
+  <div id="output"></div>
+</div>
+
+<script>
+const input = document.getElementById('url-input');
+const btn = document.getElementById('analyze-btn');
+const status = document.getElementById('status');
+const results = document.getElementById('results');
+const apiKeyRow = document.getElementById('api-key-row');
+const apiKeyInput = document.getElementById('api-key-input');
+const apiKeyNote = document.getElementById('api-key-note');
+
+function getApiKey() { return localStorage.getItem('rc_api_key'); }
+
+function refreshApiKeyUI() {
+  if (getApiKey()) {
+    apiKeyRow.style.display = 'none';
+    apiKeyNote.style.display = 'block';
+    btn.disabled = false;
+  } else {
+    apiKeyRow.style.display = 'flex';
+    apiKeyNote.style.display = 'none';
+    btn.disabled = true;
+  }
+}
+
+document.getElementById('save-key-btn').addEventListener('click', function() {
+  const val = apiKeyInput.value.trim();
+  if (!val.startsWith('sk-ant-')) { alert('That does not look like an Anthropic API key.'); return; }
+  localStorage.setItem('rc_api_key', val);
+  apiKeyInput.value = '';
+  refreshApiKeyUI();
+});
+
+document.getElementById('clear-key-btn').addEventListener('click', function() {
+  localStorage.removeItem('rc_api_key');
+  refreshApiKeyUI();
+});
+
+refreshApiKeyUI();
+
+function setStatus(msg, isError) {
+  status.textContent = msg;
+  status.className = 'visible' + (isError ? ' error' : '');
+}
+
+function clearStatus() {
+  status.className = '';
+}
+
+async function resolveSubmissionId(url) {
+  if (!url.includes('/')) return url;
+  let m = url.match(/\/comments\/([A-Za-z0-9]+)/);
+  if (m) return m[1];
+  if (url.includes('/s/')) {
+    setStatus('Resolving share link…');
+    const r = await fetch(url, { redirect: 'follow' });
+    m = r.url.match(/\/comments\/([A-Za-z0-9]+)/);
+    if (m) return m[1];
+  }
+  throw new Error('Could not extract a Reddit submission ID from: ' + url);
+}
+
+function flattenComments(kids, out) {
+  out = out || [];
+  for (var i = 0; i < kids.length; i++) {
+    var c = kids[i];
+    if (c.kind === 't1') {
+      var cd = c.data;
+      if (cd.body && cd.body !== '[deleted]' && cd.body !== '[removed]') {
+        out.push(cd.author + ': ' + cd.body);
+      }
+      if (cd.replies && cd.replies.data && cd.replies.data.children) {
+        flattenComments(cd.replies.data.children, out);
+      }
+    }
+  }
+  return out;
+}
+
+async function analyze() {
+  const API_KEY = getApiKey();
+  if (!API_KEY) { setStatus('Please enter your API key first.', true); return; }
+  const url = input.value.trim();
+  if (!url) { setStatus('Please paste a Reddit URL.', true); return; }
+
+  btn.disabled = true;
+  results.className = '';
+
+  try {
+    setStatus('Resolving URL…');
+    const id = await resolveSubmissionId(url);
+
+    setStatus('Fetching comments…');
+    const data = await fetch(
+      'https://www.reddit.com/comments/' + id + '.json?limit=500&raw_json=1',
+      { headers: { 'Accept': 'application/json' } }
+    ).then(r => r.json());
+
+    const title = data[0].data.children[0].data.title;
+    const comments = flattenComments(data[1].data.children);
+    const total = comments.length;
+
+    setStatus('Sending ' + total + ' comments to Claude…');
+
+    let text = comments.join('\n\n---\n\n');
+    const MAX = 90000;
+    const trimmed = text.length > MAX;
+    if (trimmed) text = text.slice(0, MAX);
+
+    const prompt =
+      'Analyze Reddit comments from the post: "' + title + '"\n\n' +
+      'Total comments: ' + total + (trimmed ? ' (text trimmed to fit context limit)' : '') +
+      '\n\nComments:\n' + text +
+      '\n\nInstructions:\n' +
+      '- Identify all distinct POINTS and ARGUMENTS made across the comments (not the comments themselves — a single comment may contain multiple distinct points)\n' +
+      '- Include comments from DeltaBot\n' +
+      '- Cluster similar points together into themed groups\n' +
+      '- For each cluster, show the percentage of total points it represents (do not include raw comment counts)\n' +
+      '- Format the entire output in markdown suitable for pasting directly into Reddit';
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-6',
+        max_tokens: 4096,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({ error: { message: resp.statusText } }));
+      throw new Error('API error ' + resp.status + ': ' + (err.error ? err.error.message : JSON.stringify(err)));
+    }
+
+    const result = await resp.json();
+    const analysis = result.content[0].text;
+
+    clearStatus();
+    document.getElementById('results-title').textContent = title;
+    document.getElementById('results-meta').textContent =
+      'Analyzed ' + total + ' comments' + (trimmed ? ' (trimmed)' : '') + ' · claude-opus-4-6';
+    document.getElementById('output').textContent = analysis;
+    results.className = 'visible';
+
+    document.getElementById('copy-btn').onclick = function() {
+      navigator.clipboard.writeText(analysis)
+        .then(() => {
+          this.textContent = 'Copied!';
+          setTimeout(() => { this.textContent = 'Copy'; }, 2000);
+        })
+        .catch(() => alert('Copy failed — select text manually'));
+    };
+
+  } catch (e) {
+    setStatus('Error: ' + e.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+btn.addEventListener('click', analyze);
+input.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') analyze();
+});
+</script>
+</body>
+</html>
