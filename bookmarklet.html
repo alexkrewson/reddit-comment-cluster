@@ -185,14 +185,28 @@ async function resolveSubmissionId(url) {
   return null;
 }
 
+function removeUrls(text) {
+  return text.replace(/(https?:\/\/\S+|www\.\S+|\[.*?\]\(https?:\/\/.*?\))/g, '');
+}
+
 function flattenComments(kids, out) {
   out = out || [];
   for (var i = 0; i < kids.length; i++) {
     var c = kids[i];
     if (c.kind === 't1') {
       var cd = c.data;
-      if (cd.body && cd.body !== '[deleted]' && cd.body !== '[removed]') {
-        out.push(cd.author + ': ' + cd.body);
+      var author = cd.author || '';
+      var body = cd.body || '';
+      var isDeltaBot = author === 'DeltaBot';
+      var isValid = body !== '[deleted]' && body !== '[removed]' &&
+                    author !== '[deleted]' && author !== '' &&
+                    author.toLowerCase().indexOf('modteam') === -1;
+      if (isDeltaBot || isValid) {
+        out.push({
+          author: author,
+          body: removeUrls(body),
+          score: isDeltaBot ? 1000000 : (cd.score || 0)
+        });
       }
       if (cd.replies && cd.replies.data && cd.replies.data.children) {
         flattenComments(cd.replies.data.children, out);
@@ -225,12 +239,23 @@ async function analyze() {
     const comments = flattenComments(data[1].data.children);
     const total = comments.length;
 
+    // Sort by score descending (DeltaBot always first due to score 1000000)
+    comments.sort(function(a, b) { return b.score - a.score; });
+
     setStatus('Sending ' + total + ' comments to Claude…');
 
-    let text = comments.join('\n\n---\n\n');
+    // Build text and trim by character count, preserving whole comments
     const MAX = 90000;
-    const trimmed = text.length > MAX;
-    if (trimmed) text = text.slice(0, MAX);
+    var lines = [];
+    var len = 0;
+    var trimmed = false;
+    for (var i = 0; i < comments.length; i++) {
+      var line = comments[i].author + ': ' + comments[i].body;
+      if (len + line.length > MAX) { trimmed = true; break; }
+      lines.push(line);
+      len += line.length;
+    }
+    var text = lines.join('\n\n---\n\n');
 
     const prompt =
       'Analyze Reddit comments from the post: "' + title + '"\n\n' +
