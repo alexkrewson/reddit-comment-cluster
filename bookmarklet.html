@@ -100,7 +100,7 @@
 <body>
 
 <h1>Reddit Comment Cluster</h1>
-<p class="subtitle">Paste any Reddit link to analyze and cluster the points made in comments.</p>
+<p class="subtitle">Paste a Reddit post URL to cluster comment points, or a username to profile a user.</p>
 
 <div id="api-key-row" class="input-row">
   <input id="api-key-input" type="password" placeholder="Anthropic API key (sk-ant-…)" autocomplete="off" autocorrect="off" spellcheck="false">
@@ -111,8 +111,13 @@
 </p>
 
 <div class="input-row">
-  <input id="url-input" type="url" placeholder="Paste Reddit URL here…" autocomplete="off" autocorrect="off" spellcheck="false">
-  <button id="analyze-btn" class="primary">Analyze</button>
+  <input id="url-input" type="url" placeholder="Paste Reddit post URL here…" autocomplete="off" autocorrect="off" spellcheck="false">
+  <button id="analyze-btn" class="primary">Analyze Post</button>
+</div>
+
+<div class="input-row">
+  <input id="user-input" type="text" placeholder="Reddit username (without u/)…" autocomplete="off" autocorrect="off" spellcheck="false">
+  <button id="user-btn" class="primary">Analyze User</button>
 </div>
 
 <div id="status"></div>
@@ -291,21 +296,11 @@ async function analyze() {
     const result = await resp.json();
     const analysis = result.content[0].text;
 
-    clearStatus();
-    document.getElementById('results-title').textContent = title;
-    document.getElementById('results-meta').textContent =
-      'Analyzed ' + total + ' comments' + (trimmed ? ' (trimmed)' : '') + ' · claude-opus-4-6';
-    document.getElementById('output').textContent = analysis;
-    results.className = 'visible';
-
-    document.getElementById('copy-btn').onclick = function() {
-      navigator.clipboard.writeText(analysis)
-        .then(() => {
-          this.textContent = 'Copied!';
-          setTimeout(() => { this.textContent = 'Copy'; }, 2000);
-        })
-        .catch(() => alert('Copy failed — select text manually'));
-    };
+    showResult(
+      title,
+      'Analyzed ' + total + ' comments' + (trimmed ? ' (trimmed)' : '') + ' · claude-opus-4-6',
+      analysis
+    );
 
   } catch (e) {
     setStatus('Error: ' + e.message, true);
@@ -317,6 +312,147 @@ async function analyze() {
 btn.addEventListener('click', analyze);
 input.addEventListener('keydown', function(e) {
   if (e.key === 'Enter') analyze();
+});
+
+const userInput = document.getElementById('user-input');
+const userBtn = document.getElementById('user-btn');
+
+function showResult(title, meta, text) {
+  clearStatus();
+  document.getElementById('results-title').textContent = title;
+  document.getElementById('results-meta').textContent = meta;
+  document.getElementById('output').textContent = text;
+  results.className = 'visible';
+  document.getElementById('copy-btn').onclick = function() {
+    navigator.clipboard.writeText(text)
+      .then(() => { this.textContent = 'Copied!'; setTimeout(() => { this.textContent = 'Copy'; }, 2000); })
+      .catch(() => alert('Copy failed — select text manually'));
+  };
+}
+
+async function workerFetch(params) {
+  const qs = Object.entries(params).map(([k, v]) => k + '=' + encodeURIComponent(v)).join('&');
+  const resp = await fetch('https://reddit-proxy.alex-krewson.workers.dev/?' + qs);
+  if (!resp.ok) throw new Error('Worker error ' + resp.status);
+  return resp.json();
+}
+
+async function analyzeUser() {
+  const API_KEY = getApiKey();
+  if (!API_KEY) { setStatus('Please enter your API key first.', true); return; }
+  const username = userInput.value.trim().replace(/^u\//, '');
+  if (!username) { setStatus('Please enter a Reddit username.', true); return; }
+
+  userBtn.disabled = true;
+  results.className = '';
+
+  try {
+    setStatus('Fetching account info…');
+    const about = await workerFetch({ user: username, type: 'about' });
+    const userData = about.data;
+    const accountAge = Math.floor((Date.now() / 1000 - userData.created_utc) / 86400);
+
+    // Fetch up to 3 pages of comments and 1 page of submitted posts
+    setStatus('Fetching comment history…');
+    const comments = [];
+    let after = '';
+    for (let page = 0; page < 3; page++) {
+      const params = { user: username, type: 'comments' };
+      if (after) params.after = after;
+      const data = await workerFetch(params);
+      const items = data.data.children;
+      if (!items || !items.length) break;
+      items.forEach(function(c) {
+        const d = c.data;
+        comments.push({ sub: d.subreddit, body: removeUrls(d.body || ''), score: d.score, date: new Date(d.created_utc * 1000).toLocaleDateString() });
+      });
+      after = data.data.after;
+      if (!after) break;
+    }
+
+    setStatus('Fetching post history…');
+    const submitted = [];
+    const subData = await workerFetch({ user: username, type: 'submitted' });
+    (subData.data.children || []).forEach(function(c) {
+      const d = c.data;
+      submitted.push({ sub: d.subreddit, title: d.title, score: d.score, date: new Date(d.created_utc * 1000).toLocaleDateString() });
+    });
+
+    setStatus('Sending to Claude for analysis…');
+
+    const commentKarma = userData.comment_karma;
+    const postKarma = userData.link_karma;
+    const totalComments = comments.length;
+    const subs = [...new Set(comments.map(function(c) { return c.sub; }))];
+
+    // Build comment text, trimmed to fit
+    let commentLines = comments.map(function(c) {
+      return 'r/' + c.sub + ' | Score: ' + c.score + ' | ' + c.date + '\n' + c.body;
+    });
+    let commentText = commentLines.join('\n\n---\n\n');
+    const MAX = 70000;
+    if (commentText.length > MAX) commentText = commentText.slice(0, MAX) + '\n[trimmed]';
+
+    const submittedText = submitted.map(function(p) {
+      return 'r/' + p.sub + ' | Score: ' + p.score + ' | ' + p.date + '\n' + p.title;
+    }).join('\n---\n');
+
+    const prompt =
+      'Analyze this Reddit user: u/' + username + '\n\n' +
+      'ACCOUNT STATS:\n' +
+      '- Account age: ' + accountAge + ' days\n' +
+      '- Comment karma: ' + commentKarma + '\n' +
+      '- Post karma: ' + postKarma + '\n' +
+      '- Comments fetched: ' + totalComments + '\n' +
+      '- Unique subreddits (comments): ' + subs.length + '\n' +
+      '- Top subreddits: ' + subs.slice(0, 15).join(', ') + '\n\n' +
+      'RECENT POSTS:\n' + (submittedText || '(none)') + '\n\n' +
+      'RECENT COMMENTS:\n' + commentText + '\n\n' +
+      'Please analyze this user across these four dimensions. Be clinical and precise, not provocative. ' +
+      'Include direct quotes from their comments where relevant.\n\n' +
+      '1) **Bot likelihood** — assess based on karma ratios, account age, posting frequency, comment patterns, and subreddit diversity.\n\n' +
+      '2) **Engagement value** — would it be rewarding to have an extended discussion with this person? Why or why not?\n\n' +
+      '3) **Personality summary** — what can be inferred about their personality from their stats and comment history?\n\n' +
+      '4) **Thinking style** — do they express tribalism? Critical thinking? Conscientiousness? Deep thinking? Open-mindedness?\n\n' +
+      'Format the output in markdown.';
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-6',
+        max_tokens: 4096,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({ error: { message: resp.statusText } }));
+      throw new Error('API error ' + resp.status + ': ' + (err.error ? err.error.message : JSON.stringify(err)));
+    }
+
+    const result = await resp.json();
+    showResult(
+      'u/' + username,
+      totalComments + ' comments · ' + subs.length + ' subreddits · ' + accountAge + ' days old · claude-opus-4-6',
+      result.content[0].text
+    );
+
+  } catch (e) {
+    setStatus('Error: ' + e.message, true);
+  } finally {
+    userBtn.disabled = false;
+  }
+}
+
+userBtn.addEventListener('click', analyzeUser);
+userInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') analyzeUser();
 });
 </script>
 </body>
