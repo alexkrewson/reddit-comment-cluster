@@ -176,16 +176,13 @@ function clearStatus() {
 }
 
 async function resolveSubmissionId(url) {
+  // Bare ID
   if (!url.includes('/')) return url;
-  let m = url.match(/\/comments\/([A-Za-z0-9]+)/);
+  // Standard URL — extract directly
+  const m = url.match(/\/comments\/([A-Za-z0-9]+)/);
   if (m) return m[1];
-  if (url.includes('/s/')) {
-    setStatus('Resolving share link…');
-    const r = await fetch(url, { redirect: 'follow' });
-    m = r.url.match(/\/comments\/([A-Za-z0-9]+)/);
-    if (m) return m[1];
-  }
-  throw new Error('Could not extract a Reddit submission ID from: ' + url);
+  // Anything else (share links etc) — let the worker resolve it
+  return null;
 }
 
 function flattenComments(kids, out) {
@@ -217,11 +214,12 @@ async function analyze() {
   try {
     setStatus('Resolving URL…');
     const id = await resolveSubmissionId(url);
+    const workerUrl = id
+      ? 'https://reddit-proxy.alex-krewson.workers.dev/?id=' + id
+      : 'https://reddit-proxy.alex-krewson.workers.dev/?url=' + encodeURIComponent(url);
 
     setStatus('Fetching comments…');
-    const data = await fetch(
-      'https://reddit-proxy.alex-krewson.workers.dev/?id=' + id
-    ).then(r => r.json());
+    const data = await fetch(workerUrl).then(r => r.json());
 
     const title = data[0].data.children[0].data.title;
     const comments = flattenComments(data[1].data.children);
