@@ -220,8 +220,7 @@ async function analyze() {
 
     setStatus('Fetching comments…');
     const data = await fetch(
-      'https://www.reddit.com/comments/' + id + '.json?limit=500&raw_json=1',
-      { headers: { 'Accept': 'application/json' } }
+      'https://reddit-proxy.alex-krewson.workers.dev/?id=' + id
     ).then(r => r.json());
 
     const title = data[0].data.children[0].data.title;
