@@ -85,17 +85,27 @@
   }
   #copy-btn:hover { background: #3ab954; }
   #output {
-    white-space: pre-wrap;
-    word-wrap: break-word;
     background: #272729;
     border: 1px solid #343536;
     border-radius: 6px;
-    padding: 16px;
-    font-size: 14px;
-    line-height: 1.6;
-    font-family: monospace;
+    padding: 20px 24px;
+    font-size: 15px;
+    line-height: 1.7;
+    font-family: system-ui, sans-serif;
   }
+  #output h1, #output h2 { color: #ff4500; margin: 1.4em 0 0.4em; font-size: 1.25em; border-bottom: 1px solid #343536; padding-bottom: 4px; }
+  #output h3 { color: #d7dadc; margin: 1.2em 0 0.3em; font-size: 1.05em; }
+  #output h1:first-child, #output h2:first-child { margin-top: 0; }
+  #output p { margin: 0.5em 0; }
+  #output ul, #output ol { margin: 0.4em 0; padding-left: 1.6em; }
+  #output li { margin: 0.25em 0; }
+  #output strong { color: #fff; }
+  #output em { color: #a8b0b8; }
+  #output blockquote { border-left: 3px solid #ff4500; margin: 0.8em 0; padding: 4px 12px; color: #a8b0b8; font-style: italic; }
+  #output code { background: #1a1a1b; padding: 2px 5px; border-radius: 3px; font-family: monospace; font-size: 0.9em; }
+  #output hr { border: none; border-top: 1px solid #343536; margin: 1.2em 0; }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
 
@@ -321,10 +331,10 @@ function showResult(title, meta, text) {
   clearStatus();
   document.getElementById('results-title').textContent = title;
   document.getElementById('results-meta').textContent = meta;
-  document.getElementById('output').textContent = text;
+  document.getElementById('output').innerHTML = marked.parse(text);
   results.className = 'visible';
   document.getElementById('copy-btn').onclick = function() {
-    navigator.clipboard.writeText(text)
+    navigator.clipboard.writeText(text)  // copies raw markdown, ready to paste into Reddit
       .then(() => { this.textContent = 'Copied!'; setTimeout(() => { this.textContent = 'Copy'; }, 2000); })
       .catch(() => alert('Copy failed — select text manually'));
   };
