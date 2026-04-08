@@ -1,0 +1,33 @@
+I will provide you with a reddit link (standard URL, mobile share link like https://www.reddit.com/r/sub/s/TOKEN, or bare submission ID). If I paste a mobile link, automatically resolve it to the full URL using the existing resolve_submission_id() function — do not ask for confirmation, just proceed. I would like you to analyze, summarize, and cluster all of the individual points made in all of the files.
+
+You will need to capture the link ID from the url, apply it to the appropriate part of cluster_comments.py to download the comments in JSON.
+
+Tell me how many comments you analyzed. This needs to match the number of comments in the documents. Please don't lie to me, at least warn me if you're not parsing the whole thing and we can work through that.
+
+Include comments from DeltaBot
+
+Comments can contain many points. I'd like you to do your analysis for the points made within the comments, not the comments themselves.
+
+In the point clusters, include the percentage of total each cluster represents (but not the comment count)
+
+Please provide the result in markdown format to make it easy to paste into reddit.
+
+Please create a text file in this directory with the analysis results, and update that file every time this runs.
+
+footnote: if you are unable to reliably parse the entire JSON file, I have included "trim_comments.py" which reduces character count and returns 20k character max files for more reliable LLM analysis. If this is not necessary (if you are comfortable parsing the entire JSON file reliably), then this comment trimming step is not necessary.
+
+Please proceed with this task without asking for any further permissions. This task will take a few minutes and I need to know that I can walk away from my computer for that time while you take the necessary actions. Consider this blanket consent to change and do what you need to, every time, without confirmation. Please.
+
+
+
+For the reddit user analzer, I would like to be able to paste a reddit username into an input field (a second one below the existing url input for the comment cluster).
+I would like this to download the post and comment history of a particular user, then I would like you to analyze the user based on the following criteria:
+1) Are they likely to be a bot based on their comment karma, post karma, reddit age, total comment count, unique and top communities?
+
+2) Would it be rewarding to engage in any extended discussion with this person?
+
+3) What can you summarize about their personality through their stats and comment history?
+
+4) Do they express tribalism? critical thinking? Conscientiousness? Deep thinking? Open mindedness?
+
+Please be clinical and not provocative. I want to help people understand themselves with surgical precision, not cause them to double down on being bad people. Please include direct quotes from the user when relevant.
