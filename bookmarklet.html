@@ -248,9 +248,9 @@ async function analyze() {
       : 'https://reddit-proxy.alex-krewson.workers.dev/?url=' + encodeURIComponent(url);
 
     setStatus('Fetching comments…');
-    const resp = await fetch(workerUrl);
-    const data = await resp.json();
-    if (!resp.ok || data.error) throw new Error(data.error || 'Worker error ' + resp.status);
+    const workerResp = await fetch(workerUrl);
+    const data = await workerResp.json();
+    if (!workerResp.ok || data.error) throw new Error(data.error || 'Worker error ' + workerResp.status);
     if (!Array.isArray(data) || !data[0]) throw new Error('Unexpected response from Reddit API');
 
     const title = data[0].data.children[0].data.title;
