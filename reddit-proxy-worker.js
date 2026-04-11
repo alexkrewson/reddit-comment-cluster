@@ -41,6 +41,9 @@ async function handleRequest(request, corsHeaders) {
       redditUrl = `https://www.reddit.com/user/${user}/${type}.json?limit=100${after ? '&after=' + after : ''}`;
     }
     const resp = await fetch(redditUrl, { headers });
+    if (!resp.ok) {
+      return new Response(JSON.stringify({ error: 'Reddit returned ' + resp.status }), { status: resp.status, headers: corsHeaders });
+    }
     const body = await resp.text();
     return new Response(body, { status: resp.status, headers: corsHeaders });
   }
@@ -63,6 +66,9 @@ async function handleRequest(request, corsHeaders) {
 
   const redditUrl = `https://www.reddit.com/comments/${id}.json?limit=500&raw_json=1`;
   const resp = await fetch(redditUrl, { headers });
+  if (!resp.ok) {
+    return new Response(JSON.stringify({ error: 'Reddit returned ' + resp.status }), { status: resp.status, headers: corsHeaders });
+  }
   const body = await resp.text();
   return new Response(body, { status: resp.status, headers: corsHeaders });
 }

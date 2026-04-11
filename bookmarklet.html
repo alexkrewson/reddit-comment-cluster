@@ -249,8 +249,11 @@ async function analyze() {
 
     setStatus('Fetching comments…');
     const workerResp = await fetch(workerUrl);
+    if (!workerResp.ok) {
+      const errData = await workerResp.json().catch(() => ({}));
+      throw new Error(errData.error || 'Worker error ' + workerResp.status);
+    }
     const data = await workerResp.json();
-    if (!workerResp.ok || data.error) throw new Error(data.error || 'Worker error ' + workerResp.status);
     if (!Array.isArray(data) || !data[0]) throw new Error('Unexpected response from Reddit API');
 
     const title = data[0].data.children[0].data.title;
