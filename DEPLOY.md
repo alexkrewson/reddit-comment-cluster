@@ -26,4 +26,4 @@ Only needed when `reddit-proxy-worker.js` changes. Changes to `bookmarklet.html`
 
 **"Wrangler requires at least Node.js v20"** — The PATH prefix above is missing. Use the full command above, not just `npx wrangler deploy`.
 
-**"Reddit returned 403"** — Reddit is rate-limiting or blocking the worker's IP. Nothing to deploy; wait and retry.
+**"Reddit returned 403"** — Reddit is rate-limiting or blocking the worker's IP. Nothing to deploy; wait and retry. If this starts happening frequently, the next step is to implement Reddit OAuth so requests come from an authenticated app rather than anonymous Cloudflare IPs — see the "Known issues" section in README.md.

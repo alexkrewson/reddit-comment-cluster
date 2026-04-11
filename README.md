@@ -106,6 +106,17 @@ URLs consume tokens without adding semantic value to the analysis. Removing them
 
 ---
 
+## Known issues
+
+### Reddit 403 errors
+The worker makes unauthenticated requests to Reddit's public JSON API. Reddit periodically rate-limits or blocks requests from Cloudflare datacenter IPs, returning a 403. When this happens the app shows "Error: Reddit returned 403".
+
+This is usually intermittent — waiting and retrying often works. If it becomes a persistent problem, the proper fix is to implement Reddit OAuth so requests come from an authenticated app rather than an anonymous IP. The app previously used OAuth (`client_credentials` grant) but abandoned it after Reddit's 2023 API policy changes made those credentials unreliable. A fresh OAuth implementation with a new Reddit app may now be the most reliable path forward.
+
+See `DEPLOY.md` for deployment context.
+
+---
+
 ## Setup
 
 ### Prerequisites
