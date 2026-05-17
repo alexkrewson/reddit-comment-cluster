@@ -286,6 +286,10 @@ async function claudeRequest(body) {
 }
 
 // ---- App ----
+const input = document.getElementById('url-input');
+const btn = document.getElementById('analyze-btn');
+const status = document.getElementById('status');
+const results = document.getElementById('results');
 
 function setStatus(msg, isError) {
   status.textContent = msg;
