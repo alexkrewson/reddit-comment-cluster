@@ -47,8 +47,6 @@
   }
   button.primary:hover { background: #e03d00; }
   button.primary:disabled { background: #5a2a1a; color: #888; cursor: not-allowed; }
-  #api-key-note { font-size: 13px; color: #818384; margin-bottom: 16px; }
-  #clear-key-btn { background: none; border: none; color: #ff4500; cursor: pointer; font-size: 13px; padding: 0; }
   #status {
     padding: 12px 14px;
     background: #272729;
@@ -158,19 +156,23 @@
   button.secondary:hover { background: #3c3d3e; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
 <h1>Reddit Comment Cluster</h1>
 <p class="subtitle">Paste a Reddit post URL to cluster comment points, a username to profile a user, or a YouTube URL to fetch and analyze a transcript.</p>
 
-<div id="api-key-row" class="input-row">
-  <input id="api-key-input" type="password" placeholder="Anthropic API key (sk-ant-…)" autocomplete="off" autocorrect="off" spellcheck="false">
-  <button id="save-key-btn" class="primary">Save Key</button>
+<div id="auth-logged-out" class="input-row" style="display:none">
+  <input id="auth-email" type="email" placeholder="Email address" autocomplete="email" spellcheck="false">
+  <button id="auth-send-btn" class="primary">Send magic link</button>
 </div>
-<p id="api-key-note" style="display:none">
-  API key saved in browser. <button id="clear-key-btn">Clear</button>
+<p id="auth-sent-note" style="display:none; font-size:13px; color:#818384; margin-bottom:16px;">Magic link sent — check your email.</p>
+<p id="auth-logged-in-note" style="display:none; font-size:13px; color:#818384; margin-bottom:16px;">
+  <span id="auth-email-display"></span> · <button id="auth-signout-btn" style="background:none;border:none;color:#ff4500;cursor:pointer;font-size:13px;padding:0;">Sign out</button>
 </p>
+
+<div id="app-content" style="display:none">
 
 <div class="input-row">
   <input id="url-input" type="url" placeholder="Paste Reddit post URL here…" autocomplete="off" autocorrect="off" spellcheck="false">
@@ -198,6 +200,8 @@
   <div class="transcript-entries" id="transcript-entries"></div>
 </div>
 
+</div> <!-- end #app-content -->
+
 <div id="status"></div>
 
 <div id="results">
@@ -212,42 +216,76 @@
 </div>
 
 <script>
-const input = document.getElementById('url-input');
-const btn = document.getElementById('analyze-btn');
-const status = document.getElementById('status');
-const results = document.getElementById('results');
-const apiKeyRow = document.getElementById('api-key-row');
-const apiKeyInput = document.getElementById('api-key-input');
-const apiKeyNote = document.getElementById('api-key-note');
+// ---- Supabase auth ----
+const SUPABASE_URL = 'https://xjcdicxchvmujjfnpbia.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_YZkXT-j_gaUGKhco7ENJ1Q_ydVit7Nf';
+const WORKER_URL = 'https://reddit-proxy.alex-krewson.workers.dev';
 
-function getApiKey() { return localStorage.getItem('rc_api_key'); }
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-function refreshApiKeyUI() {
-  if (getApiKey()) {
-    apiKeyRow.style.display = 'none';
-    apiKeyNote.style.display = 'block';
-    btn.disabled = false;
+const appContent = document.getElementById('app-content');
+const authLoggedOut = document.getElementById('auth-logged-out');
+const authSentNote = document.getElementById('auth-sent-note');
+const authLoggedInNote = document.getElementById('auth-logged-in-note');
+
+function setAuthUI(session) {
+  if (session) {
+    authLoggedOut.style.display = 'none';
+    authSentNote.style.display = 'none';
+    authLoggedInNote.style.display = 'block';
+    document.getElementById('auth-email-display').textContent = session.user.email;
+    appContent.style.display = 'block';
   } else {
-    apiKeyRow.style.display = 'flex';
-    apiKeyNote.style.display = 'none';
-    btn.disabled = true;
+    authLoggedOut.style.display = 'flex';
+    authSentNote.style.display = 'none';
+    authLoggedInNote.style.display = 'none';
+    appContent.style.display = 'none';
   }
 }
 
-document.getElementById('save-key-btn').addEventListener('click', function() {
-  const val = apiKeyInput.value.trim();
-  if (!val.startsWith('sk-ant-')) { alert('That does not look like an Anthropic API key.'); return; }
-  localStorage.setItem('rc_api_key', val);
-  apiKeyInput.value = '';
-  refreshApiKeyUI();
+supabaseClient.auth.onAuthStateChange(function(_event, session) {
+  setAuthUI(session);
 });
 
-document.getElementById('clear-key-btn').addEventListener('click', function() {
-  localStorage.removeItem('rc_api_key');
-  refreshApiKeyUI();
+supabaseClient.auth.getSession().then(function(res) {
+  setAuthUI(res.data.session);
 });
 
-refreshApiKeyUI();
+document.getElementById('auth-send-btn').addEventListener('click', async function() {
+  const email = document.getElementById('auth-email').value.trim();
+  if (!email) { alert('Please enter your email address.'); return; }
+  const { error } = await supabaseClient.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: window.location.href }
+  });
+  if (error) { alert('Error: ' + error.message); return; }
+  authLoggedOut.style.display = 'none';
+  authSentNote.style.display = 'block';
+});
+
+document.getElementById('auth-signout-btn').addEventListener('click', function() {
+  supabaseClient.auth.signOut();
+});
+
+async function claudeRequest(body) {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (!session) throw new Error('Not logged in');
+  const resp = await fetch(WORKER_URL + '/claude', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + session.access_token,
+    },
+    body: JSON.stringify(body),
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(function() { return { error: { message: resp.statusText } }; });
+    throw new Error('API error ' + resp.status + ': ' + (err.error ? err.error.message : JSON.stringify(err)));
+  }
+  return resp.json();
+}
+
+// ---- App ----
 
 function setStatus(msg, isError) {
   status.textContent = msg;
@@ -300,8 +338,6 @@ function flattenComments(kids, out) {
 }
 
 async function analyze() {
-  const API_KEY = getApiKey();
-  if (!API_KEY) { setStatus('Please enter your API key first.', true); return; }
   const url = input.value.trim();
   if (!url) { setStatus('Please paste a Reddit URL.', true); return; }
 
@@ -312,8 +348,8 @@ async function analyze() {
     setStatus('Resolving URL…');
     const id = await resolveSubmissionId(url);
     const workerUrl = id
-      ? 'https://reddit-proxy.alex-krewson.workers.dev/?id=' + id
-      : 'https://reddit-proxy.alex-krewson.workers.dev/?url=' + encodeURIComponent(url);
+      ? WORKER_URL + '/?id=' + id
+      : WORKER_URL + '/?url=' + encodeURIComponent(url);
 
     setStatus('Fetching comments…');
     const workerResp = await fetch(workerUrl);
@@ -357,27 +393,11 @@ async function analyze() {
       '- For each cluster, show the percentage of total points it represents (do not include raw comment counts)\n' +
       '- Format the entire output in markdown suitable for pasting directly into Reddit';
 
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': API_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-opus-4-6',
-        max_tokens: 4096,
-        messages: [{ role: 'user', content: prompt }]
-      })
+    const result = await claudeRequest({
+      model: 'claude-opus-4-6',
+      max_tokens: 4096,
+      messages: [{ role: 'user', content: prompt }]
     });
-
-    if (!resp.ok) {
-      const err = await resp.json().catch(() => ({ error: { message: resp.statusText } }));
-      throw new Error('API error ' + resp.status + ': ' + (err.error ? err.error.message : JSON.stringify(err)));
-    }
-
-    const result = await resp.json();
     const analysis = result.content[0].text;
 
     showResult(
@@ -416,14 +436,12 @@ function showResult(title, meta, text) {
 
 async function workerFetch(params) {
   const qs = Object.entries(params).map(([k, v]) => k + '=' + encodeURIComponent(v)).join('&');
-  const resp = await fetch('https://reddit-proxy.alex-krewson.workers.dev/?' + qs);
+  const resp = await fetch(WORKER_URL + '/?' + qs);
   if (!resp.ok) throw new Error('Worker error ' + resp.status);
   return resp.json();
 }
 
 async function analyzeUser() {
-  const API_KEY = getApiKey();
-  if (!API_KEY) { setStatus('Please enter your API key first.', true); return; }
   const username = userInput.value.trim().replace(/^u\//, '');
   if (!username) { setStatus('Please enter a Reddit username.', true); return; }
 
@@ -500,27 +518,11 @@ async function analyzeUser() {
       '4) **Thinking style** — do they express tribalism? Critical thinking? Conscientiousness? Deep thinking? Open-mindedness?\n\n' +
       'Format the output in markdown.';
 
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': API_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-opus-4-6',
-        max_tokens: 4096,
-        messages: [{ role: 'user', content: prompt }]
-      })
+    const result = await claudeRequest({
+      model: 'claude-opus-4-6',
+      max_tokens: 4096,
+      messages: [{ role: 'user', content: prompt }]
     });
-
-    if (!resp.ok) {
-      const err = await resp.json().catch(() => ({ error: { message: resp.statusText } }));
-      throw new Error('API error ' + resp.status + ': ' + (err.error ? err.error.message : JSON.stringify(err)));
-    }
-
-    const result = await resp.json();
     showResult(
       'u/' + username,
       totalComments + ' comments · ' + subs.length + ' subreddits · ' + accountAge + ' days old · claude-opus-4-6',
@@ -564,7 +566,7 @@ async function fetchYoutubeTranscript() {
       return '<div class="transcript-entry"><span class="transcript-time">[' + e.time + ']</span><span>' + escapeHtml(e.text) + '</span></div>';
     }).join('');
 
-    document.getElementById('yt-analyze-btn').style.display = getApiKey() ? '' : 'none';
+    document.getElementById('yt-analyze-btn').style.display = '';
     transcriptBox.className = 'visible';
     clearStatus();
   } catch (e) {
@@ -594,8 +596,6 @@ ytFetchBtn.addEventListener('click', fetchYoutubeTranscript);
 ytInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') fetchYoutubeTranscript(); });
 
 async function analyzeTranscript() {
-  const API_KEY = getApiKey();
-  if (!API_KEY) { setStatus('Please enter your API key first.', true); return; }
   if (!currentTranscriptEntries.length) { setStatus('No transcript loaded.', true); return; }
 
   const ytAnalyzeBtn = document.getElementById('yt-analyze-btn');
@@ -619,27 +619,11 @@ async function analyzeTranscript() {
       '4. An overall assessment of the content\'s value and quality\n\n' +
       'Format the output in markdown.';
 
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': API_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-opus-4-6',
-        max_tokens: 4096,
-        messages: [{ role: 'user', content: prompt }]
-      })
+    const result = await claudeRequest({
+      model: 'claude-opus-4-6',
+      max_tokens: 4096,
+      messages: [{ role: 'user', content: prompt }]
     });
-
-    if (!resp.ok) {
-      const err = await resp.json().catch(function() { return { error: { message: resp.statusText } }; });
-      throw new Error('API error ' + resp.status + ': ' + (err.error ? err.error.message : JSON.stringify(err)));
-    }
-
-    const result = await resp.json();
     showResult(
       'YouTube Transcript Analysis',
       currentTranscriptEntries.length + ' entries · claude-opus-4-6',
