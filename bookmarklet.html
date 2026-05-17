@@ -251,7 +251,9 @@ const SUPABASE_URL = 'https://xjcdicxchvmujjfnpbia.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_YZkXT-j_gaUGKhco7ENJ1Q_ydVit7Nf';
 const WORKER_URL = 'https://reddit-proxy.alex-krewson.workers.dev';
 
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: { flowType: 'implicit' }
+});
 
 const appContent = document.getElementById('app-content');
 const authLoggedOut = document.getElementById('auth-logged-out');
@@ -288,7 +290,7 @@ document.getElementById('auth-send-btn').addEventListener('click', async functio
   if (!email) { alert('Please enter your email address.'); return; }
   const { error } = await supabaseClient.auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: window.location.href }
+    options: { emailRedirectTo: window.location.origin + window.location.pathname }
   });
   if (error) { alert('Error: ' + error.message); return; }
   authLoggedOut.style.display = 'none';
