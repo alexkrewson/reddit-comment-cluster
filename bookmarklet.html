@@ -154,6 +154,31 @@
     white-space: nowrap;
   }
   button.secondary:hover { background: #3c3d3e; }
+  #history-section { margin-bottom: 16px; }
+  .history-header { color: #818384; font-size: 13px; margin: 0 0 8px; }
+  .history-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: #272729;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-bottom: 4px;
+    font-size: 13px;
+  }
+  .history-item:hover { background: #3c3d3e; }
+  .history-label {
+    background: #343536;
+    border-radius: 4px;
+    padding: 2px 6px;
+    color: #818384;
+    font-size: 11px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .history-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .history-date { color: #818384; font-size: 12px; white-space: nowrap; flex-shrink: 0; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -187,6 +212,11 @@
 <div class="input-row">
   <input id="yt-input" type="url" placeholder="Paste YouTube URL here…" autocomplete="off" autocorrect="off" spellcheck="false">
   <button id="yt-fetch-btn" class="primary">Get Transcript</button>
+</div>
+
+<div id="history-section" style="display:none">
+  <p class="history-header">Recent analyses</p>
+  <div id="history-list"></div>
 </div>
 
 <div id="transcript-box">
@@ -235,11 +265,13 @@ function setAuthUI(session) {
     authLoggedInNote.style.display = 'block';
     document.getElementById('auth-email-display').textContent = session.user.email;
     appContent.style.display = 'block';
+    loadHistory();
   } else {
     authLoggedOut.style.display = 'flex';
     authSentNote.style.display = 'none';
     authLoggedInNote.style.display = 'none';
     appContent.style.display = 'none';
+    renderHistory([]);
   }
 }
 
@@ -283,6 +315,59 @@ async function claudeRequest(body) {
     throw new Error('API error ' + resp.status + ': ' + (err.error ? err.error.message : JSON.stringify(err)));
   }
   return resp.json();
+}
+
+// ---- History ----
+async function saveAnalysis(type, query, title, meta, result) {
+  try {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session) return;
+    await supabaseClient.from('analyses').insert({
+      user_id: session.user.id,
+      type,
+      query,
+      title,
+      meta,
+      result,
+    });
+  } catch (e) {
+    console.warn('Failed to save analysis:', e);
+  }
+}
+
+async function loadHistory() {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (!session) { renderHistory([]); return; }
+  const { data } = await supabaseClient
+    .from('analyses')
+    .select('id, type, query, title, meta, result, created_at')
+    .order('created_at', { ascending: false })
+    .limit(30);
+  renderHistory(data || []);
+}
+
+const TYPE_LABELS = { reddit_post: 'Post', reddit_user: 'User', youtube_transcript: 'Transcript', youtube_analysis: 'YT Analysis' };
+
+function renderHistory(items) {
+  const section = document.getElementById('history-section');
+  const list = document.getElementById('history-list');
+  if (!items.length) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  list.innerHTML = items.map(function(item) {
+    const date = new Date(item.created_at).toLocaleDateString();
+    return '<div class="history-item" data-id="' + escapeHtml(item.id) + '">' +
+      '<span class="history-label">' + escapeHtml(TYPE_LABELS[item.type] || item.type) + '</span>' +
+      '<span class="history-title">' + escapeHtml(item.title) + '</span>' +
+      '<span class="history-date">' + date + '</span>' +
+      '</div>';
+  }).join('');
+  list.querySelectorAll('.history-item').forEach(function(el) {
+    var item = items.find(function(i) { return i.id === el.dataset.id; });
+    if (!item) return;
+    el.addEventListener('click', function() {
+      showResult(item.title, item.meta || '', item.result);
+    });
+  });
 }
 
 // ---- App ----
@@ -404,11 +489,9 @@ async function analyze() {
     });
     const analysis = result.content[0].text;
 
-    showResult(
-      title,
-      'Analyzed ' + total + ' comments' + (trimmed ? ' (trimmed)' : '') + ' · claude-opus-4-6',
-      analysis
-    );
+    const postMeta = 'Analyzed ' + total + ' comments' + (trimmed ? ' (trimmed)' : '') + ' · claude-opus-4-6';
+    showResult(title, postMeta, analysis);
+    saveAnalysis('reddit_post', url, title, postMeta, analysis).then(loadHistory);
 
   } catch (e) {
     setStatus('Error: ' + e.message, true);
@@ -527,11 +610,9 @@ async function analyzeUser() {
       max_tokens: 4096,
       messages: [{ role: 'user', content: prompt }]
     });
-    showResult(
-      'u/' + username,
-      totalComments + ' comments · ' + subs.length + ' subreddits · ' + accountAge + ' days old · claude-opus-4-6',
-      result.content[0].text
-    );
+    const userMeta = totalComments + ' comments · ' + subs.length + ' subreddits · ' + accountAge + ' days old · claude-opus-4-6';
+    showResult('u/' + username, userMeta, result.content[0].text);
+    saveAnalysis('reddit_user', username, 'u/' + username, userMeta, result.content[0].text).then(loadHistory);
 
   } catch (e) {
     setStatus('Error: ' + e.message, true);
@@ -573,6 +654,12 @@ async function fetchYoutubeTranscript() {
     document.getElementById('yt-analyze-btn').style.display = '';
     transcriptBox.className = 'visible';
     clearStatus();
+
+    const vidMatch = url.match(/[?&]v=([^&]+)/) || url.match(/youtu\.be\/([^?&/]+)/);
+    const transcriptTitle = vidMatch ? 'YouTube: ' + vidMatch[1] : 'YouTube Transcript';
+    const transcriptText = data.entries.map(function(e) { return '[' + e.time + '] ' + e.text; }).join('\n');
+    saveAnalysis('youtube_transcript', url, transcriptTitle, data.entries.length + ' entries', transcriptText).then(loadHistory);
+
   } catch (e) {
     setStatus('Error: ' + e.message, true);
   } finally {
@@ -628,11 +715,10 @@ async function analyzeTranscript() {
       max_tokens: 4096,
       messages: [{ role: 'user', content: prompt }]
     });
-    showResult(
-      'YouTube Transcript Analysis',
-      currentTranscriptEntries.length + ' entries · claude-opus-4-6',
-      result.content[0].text
-    );
+    const ytMeta = currentTranscriptEntries.length + ' entries · claude-opus-4-6';
+    showResult('YouTube Transcript Analysis', ytMeta, result.content[0].text);
+    saveAnalysis('youtube_analysis', ytInput.value.trim(), 'YouTube Transcript Analysis', ytMeta, result.content[0].text).then(loadHistory);
+
   } catch (e) {
     setStatus('Error: ' + e.message, true);
   } finally {
