@@ -1,3 +1,6 @@
+const SUPABASE_URL = 'https://xjcdicxchvmujjfnpbia.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_YZkXT-j_gaUGKhco7ENJ1Q_ydVit7Nf';
+
 let cachedToken = null;
 let tokenExpiry = 0;
 
@@ -26,36 +29,15 @@ export default {
   }
 }
 
-function b64urlDecode(str) {
-  const s = str.replace(/-/g, '+').replace(/_/g, '/');
-  const pad = s.length % 4;
-  return pad ? s + '='.repeat(4 - pad) : s;
-}
-
-async function verifyJWT(token, secret) {
-  const parts = token.split('.');
-  if (parts.length !== 3) throw new Error('Malformed JWT');
-  const [header, payload, sig] = parts;
-
-  const key = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['verify']
-  );
-
-  const sigBytes = Uint8Array.from(atob(b64urlDecode(sig)), c => c.charCodeAt(0));
-
-  const valid = await crypto.subtle.verify(
-    'HMAC', key, sigBytes,
-    new TextEncoder().encode(header + '.' + payload)
-  );
-  if (!valid) throw new Error('Invalid signature');
-
-  const claims = JSON.parse(atob(b64urlDecode(payload)));
-  if (claims.exp < Date.now() / 1000) throw new Error('Token expired');
-  return claims;
+async function verifySupabaseToken(token) {
+  const resp = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'apikey': SUPABASE_ANON_KEY,
+    },
+  });
+  if (!resp.ok) throw new Error('Invalid or expired token');
+  return resp.json();
 }
 
 async function getAccessToken(env) {
@@ -96,7 +78,7 @@ async function handleRequest(request, env, corsHeaders) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
     }
     try {
-      await verifyJWT(auth.slice(7), env.SUPABASE_JWT_SECRET);
+      await verifySupabaseToken(auth.slice(7));
     } catch (e) {
       return new Response(JSON.stringify({ error: 'Unauthorized: ' + e.message }), { status: 401, headers: corsHeaders });
     }
