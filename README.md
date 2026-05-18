@@ -109,11 +109,19 @@ URLs consume tokens without adding semantic value to the analysis. Removing them
 ## Known issues
 
 ### Reddit 403 errors
-The worker makes unauthenticated requests to Reddit's public JSON API. Reddit periodically rate-limits or blocks requests from Cloudflare datacenter IPs, returning a 403. When this happens the app shows "Error: Reddit returned 403".
+Reddit blocks unauthenticated requests from Cloudflare datacenter IPs. The worker now uses Reddit OAuth (`client_credentials` grant) to authenticate all requests, which routes them through `oauth.reddit.com` and avoids the IP-based blocking.
 
-This is usually intermittent — waiting and retrying often works. If it becomes a persistent problem, the proper fix is to implement Reddit OAuth so requests come from an authenticated app rather than an anonymous IP. The app previously used OAuth (`client_credentials` grant) but abandoned it after Reddit's 2023 API policy changes made those credentials unreliable. A fresh OAuth implementation with a new Reddit app may now be the most reliable path forward.
+**If the 403 returns:** the OAuth credentials stored as Cloudflare Worker secrets may have expired or been revoked. To fix:
+1. Go to `reddit.com/prefs/apps` and find the app (or create a new "script" type app)
+2. Copy the client ID and secret
+3. Update the secrets:
+   ```bash
+   echo "CLIENT_ID" | PATH=~/.nvm/versions/node/v20.20.0/bin:$PATH CLOUDFLARE_API_TOKEN=<token> npx wrangler secret put REDDIT_CLIENT_ID --name reddit-proxy
+   echo "CLIENT_SECRET" | PATH=~/.nvm/versions/node/v20.20.0/bin:$PATH CLOUDFLARE_API_TOKEN=<token> npx wrangler secret put REDDIT_CLIENT_SECRET --name reddit-proxy
+   ```
+4. Redeploy the worker (see `DEPLOY.md`)
 
-See `DEPLOY.md` for deployment context.
+**History:** the app originally used the public JSON API (`www.reddit.com/.../.json`) after Reddit's 2023 API policy changes broke an earlier OAuth integration. By April 2026 Reddit began blocking Cloudflare datacenter IPs on the public API too, making OAuth the only reliable path.
 
 ---
 

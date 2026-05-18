@@ -26,6 +26,12 @@ export default {
   }
 }
 
+function b64urlDecode(str) {
+  const s = str.replace(/-/g, '+').replace(/_/g, '/');
+  const pad = s.length % 4;
+  return pad ? s + '='.repeat(4 - pad) : s;
+}
+
 async function verifyJWT(token, secret) {
   const parts = token.split('.');
   if (parts.length !== 3) throw new Error('Malformed JWT');
@@ -39,10 +45,7 @@ async function verifyJWT(token, secret) {
     ['verify']
   );
 
-  const sigBytes = Uint8Array.from(
-    atob(sig.replace(/-/g, '+').replace(/_/g, '/')),
-    c => c.charCodeAt(0)
-  );
+  const sigBytes = Uint8Array.from(atob(b64urlDecode(sig)), c => c.charCodeAt(0));
 
   const valid = await crypto.subtle.verify(
     'HMAC', key, sigBytes,
@@ -50,7 +53,7 @@ async function verifyJWT(token, secret) {
   );
   if (!valid) throw new Error('Invalid signature');
 
-  const claims = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+  const claims = JSON.parse(atob(b64urlDecode(payload)));
   if (claims.exp < Date.now() / 1000) throw new Error('Token expired');
   return claims;
 }
