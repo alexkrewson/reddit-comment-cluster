@@ -8,6 +8,12 @@ after each step so progress survives a crash. See the approved plan for full rat
       repo name and GitHub Pages URL stay the same)
 - [x] 3. Visual restyle to match Argument Mapper (light slate/blue palette, font stack,
       dark-mode variant)
+- [x] 3b. Superseded 3's palette: applied ~/apps/shared/css-best-practices.md instead —
+      dark-first canvas with the shared semantic tokens (--bg-canvas/--text-primary/etc.),
+      explicit [data-theme="light"] toggle (not prefers-color-scheme) with a header
+      icon button + localStorage persistence, 44px touch targets on all interactive
+      elements, uppercase label pattern for section headers/badges. User chose this over
+      staying pinned to Argument Mapper's light theme when the two conflicted.
 - [x] 4. Tab structure: Analyze (default, inputs+results) / History tabs
 - [x] 5. History titles: YouTube oEmbed title fetch + fallback truncation for any
       unresolvable identifier
