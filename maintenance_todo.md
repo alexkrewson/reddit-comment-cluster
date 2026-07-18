@@ -64,3 +64,14 @@ after each step so progress survives a crash. See the approved plan for full rat
       - [x] Round-1 commits (steps 1-8) pushed to origin/main at user's request so the
             rebrand/tabs/restyle/normalization/raw-downloads are live on GitHub Pages.
             Subreddit Vibe Check won't work live yet — needs the updated Worker deployed.
+      - [ ] **ON HOLD (2026-07-18):** user is planning to consolidate the 3 separate
+            Supabase projects (see ~/apps/shared/todo.md) into 1 schema-per-app project
+            before this app's Supabase setup gets any more surface area added. Running
+            `supabase-credits-migration.sql` against the live `xjcdicxchvmujjfnpbia`
+            project now would just mean redoing it against the consolidated project
+            later, so it's parked. This also holds the Worker deploy (its /claude route
+            would query a `profiles` table that doesn't exist yet and break Claude
+            analysis for everyone) and the Stripe webhook setup. All step 9 code stays
+            committed locally, unpushed, so the live site is unaffected — no Buy Credits
+            button visible until the Supabase side is ready. Resume when the
+            consolidation lands (or sooner if directed to proceed anyway).
