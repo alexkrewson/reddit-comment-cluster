@@ -6,7 +6,7 @@ after each step so progress survives a crash. See the approved plan for full rat
 - [x] 1. Create this maintenance_todo.md
 - [x] 2. Rename app "Reddit Comment Cluster" → "Analyzer" (titles/headings/metadata only;
       repo name and GitHub Pages URL stay the same)
-- [ ] 3. Visual restyle to match Argument Mapper (light slate/blue palette, font stack,
+- [x] 3. Visual restyle to match Argument Mapper (light slate/blue palette, font stack,
       dark-mode variant)
 - [ ] 4. Tab structure: Analyze (default, inputs+results) / History tabs
 - [ ] 5. History titles: YouTube oEmbed title fetch + fallback truncation for any

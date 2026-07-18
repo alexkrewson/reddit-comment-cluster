@@ -5,59 +5,86 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Analyzer</title>
 <style>
+  /* Palette matches Argument Mapper (iDisagree): slate/blue light theme with a
+     prefers-color-scheme dark variant using the same dark tokens. */
+  :root {
+    --bg: #f8fafc;
+    --fg: #0f172a;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    --surface: #fff;
+    --accent: #3b82f6;
+    --accent-hover: #2563eb;
+    --danger: #dc2626;
+    --code-bg: #f1f5f9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f172a;
+      --fg: #f1f5f9;
+      --muted: #92a1b5;
+      --border: #334155;
+      --surface: #1e293b;
+      --accent: #3b82f6;
+      --accent-hover: #60a5fa;
+      --danger: #f87171;
+      --code-bg: #0f172a;
+    }
+  }
   * { box-sizing: border-box; }
   body {
-    font-family: system-ui, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     max-width: 800px;
     margin: 0 auto;
     padding: 24px 16px;
-    background: #1a1a1b;
-    color: #d7dadc;
+    background: var(--bg);
+    color: var(--fg);
     min-height: 100vh;
   }
-  h1 { color: #ff4500; margin: 0 0 8px; font-size: 22px; }
-  .subtitle { color: #818384; margin: 0 0 24px; font-size: 14px; }
+  h1 { color: var(--fg); margin: 0 0 8px; font-size: 1.25rem; font-weight: 700; }
+  .subtitle { color: var(--muted); margin: 0 0 24px; font-size: 0.85rem; }
   .input-row {
     display: flex;
     gap: 8px;
     margin-bottom: 16px;
   }
-  input[type="url"], input[type="text"], input[type="password"] {
+  input[type="url"], input[type="text"], input[type="password"], input[type="email"] {
     flex: 1;
     padding: 12px 14px;
-    background: #272729;
-    border: 1px solid #343536;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 6px;
-    color: #d7dadc;
+    color: var(--fg);
     font-size: 15px;
     outline: none;
   }
-  input[type="url"]:focus, input[type="password"]:focus { border-color: #ff4500; }
-  input::placeholder { color: #818384; }
+  input[type="url"]:focus, input[type="text"]:focus, input[type="password"]:focus, input[type="email"]:focus { border-color: var(--accent); }
+  input::placeholder { color: var(--muted); }
   button.primary {
     padding: 12px 20px;
-    background: #ff4500;
+    background: var(--accent);
     color: #fff;
     border: none;
     border-radius: 6px;
     font-size: 15px;
-    font-weight: bold;
+    font-weight: 600;
     cursor: pointer;
     white-space: nowrap;
   }
-  button.primary:hover { background: #e03d00; }
-  button.primary:disabled { background: #5a2a1a; color: #888; cursor: not-allowed; }
+  button.primary:hover { background: var(--accent-hover); }
+  button.primary:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
   #status {
     padding: 12px 14px;
-    background: #272729;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 6px;
-    color: #818384;
+    color: var(--muted);
     font-size: 14px;
     margin-bottom: 16px;
     display: none;
   }
   #status.visible { display: block; }
-  #status.error { color: #ff6b6b; border-left: 3px solid #ff6b6b; }
+  #status.error { color: var(--danger); border-left: 3px solid var(--danger); }
   #results { display: none; }
   #results.visible { display: block; }
   .results-header {
@@ -68,44 +95,44 @@
     margin-bottom: 12px;
     flex-wrap: wrap;
   }
-  .results-title { color: #ff4500; font-size: 17px; font-weight: bold; margin: 0; }
-  .results-meta { color: #818384; font-size: 13px; margin: 4px 0 0; }
+  .results-title { color: var(--fg); font-size: 17px; font-weight: 700; margin: 0; }
+  .results-meta { color: var(--muted); font-size: 13px; margin: 4px 0 0; }
   #copy-btn {
     padding: 9px 18px;
-    background: #46d160;
+    background: var(--accent);
     border: none;
     border-radius: 6px;
-    color: #000;
-    font-weight: bold;
+    color: #fff;
+    font-weight: 600;
     cursor: pointer;
     font-size: 14px;
     flex-shrink: 0;
   }
-  #copy-btn:hover { background: #3ab954; }
+  #copy-btn:hover { background: var(--accent-hover); }
   #output {
-    background: #272729;
-    border: 1px solid #343536;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 6px;
     padding: 20px 24px;
     font-size: 15px;
     line-height: 1.7;
-    font-family: system-ui, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
-  #output h1, #output h2 { color: #ff4500; margin: 1.4em 0 0.4em; font-size: 1.25em; border-bottom: 1px solid #343536; padding-bottom: 4px; }
-  #output h3 { color: #d7dadc; margin: 1.2em 0 0.3em; font-size: 1.05em; }
+  #output h1, #output h2 { color: var(--fg); margin: 1.4em 0 0.4em; font-size: 1.25em; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+  #output h3 { color: var(--fg); margin: 1.2em 0 0.3em; font-size: 1.05em; }
   #output h1:first-child, #output h2:first-child { margin-top: 0; }
   #output p { margin: 0.5em 0; }
   #output ul, #output ol { margin: 0.4em 0; padding-left: 1.6em; }
   #output li { margin: 0.25em 0; }
-  #output strong { color: #fff; }
-  #output em { color: #a8b0b8; }
-  #output blockquote { border-left: 3px solid #ff4500; margin: 0.8em 0; padding: 4px 12px; color: #a8b0b8; font-style: italic; }
-  #output code { background: #1a1a1b; padding: 2px 5px; border-radius: 3px; font-family: monospace; font-size: 0.9em; }
-  #output hr { border: none; border-top: 1px solid #343536; margin: 1.2em 0; }
+  #output strong { color: var(--fg); }
+  #output em { color: var(--muted); }
+  #output blockquote { border-left: 3px solid var(--accent); margin: 0.8em 0; padding: 4px 12px; color: var(--muted); font-style: italic; }
+  #output code { background: var(--code-bg); padding: 2px 5px; border-radius: 3px; font-family: monospace; font-size: 0.9em; }
+  #output hr { border: none; border-top: 1px solid var(--border); margin: 1.2em 0; }
   #transcript-box {
     display: none;
-    background: #272729;
-    border: 1px solid #343536;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 6px;
     margin-bottom: 16px;
   }
@@ -115,11 +142,11 @@
     justify-content: space-between;
     align-items: center;
     padding: 10px 14px;
-    border-bottom: 1px solid #343536;
+    border-bottom: 1px solid var(--border);
     flex-wrap: wrap;
     gap: 8px;
   }
-  .transcript-meta { color: #818384; font-size: 13px; }
+  .transcript-meta { color: var(--muted); font-size: 13px; }
   .transcript-toolbar-btns { display: flex; gap: 8px; }
   .transcript-entries {
     max-height: 280px;
@@ -134,7 +161,7 @@
     line-height: 1.5;
   }
   .transcript-time {
-    color: #818384;
+    color: var(--muted);
     font-size: 12px;
     white-space: nowrap;
     padding-top: 2px;
@@ -144,41 +171,67 @@
   }
   button.secondary {
     padding: 8px 14px;
-    background: #343536;
-    color: #d7dadc;
-    border: none;
+    background: var(--code-bg);
+    color: var(--fg);
+    border: 1px solid var(--border);
     border-radius: 6px;
     font-size: 13px;
-    font-weight: bold;
+    font-weight: 600;
     cursor: pointer;
     white-space: nowrap;
   }
-  button.secondary:hover { background: #3c3d3e; }
+  button.secondary:hover { background: var(--border); }
+  button.secondary:disabled { color: var(--muted); cursor: not-allowed; }
+  /* --- Tab bar (matches Argument Mapper's .tab-bar/.tab-btn) --- */
+  .tab-bar {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .tab-btn {
+    padding: 0.5rem 1.25rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--muted);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+    margin-bottom: -1px;
+  }
+  .tab-btn:hover { color: var(--fg); }
+  .tab-btn--active { color: var(--fg); border-bottom-color: var(--accent); font-weight: 600; }
+  .tab-panel { display: none; }
+  .tab-panel--active { display: block; }
+  /* --- History list (matches Argument Mapper's .history-row) --- */
   #history-section { margin-bottom: 16px; }
-  .history-header { color: #818384; font-size: 13px; margin: 0 0 8px; }
+  .history-header { color: var(--muted); font-size: 13px; margin: 0 0 8px; }
   .history-item {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 8px 12px;
-    background: #272729;
-    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
     cursor: pointer;
-    margin-bottom: 4px;
+    margin-bottom: 8px;
     font-size: 13px;
   }
-  .history-item:hover { background: #3c3d3e; }
+  .history-item:hover { border-color: var(--accent); }
   .history-label {
-    background: #343536;
+    background: var(--code-bg);
     border-radius: 4px;
     padding: 2px 6px;
-    color: #818384;
+    color: var(--muted);
     font-size: 11px;
     white-space: nowrap;
     flex-shrink: 0;
   }
-  .history-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .history-date { color: #818384; font-size: 12px; white-space: nowrap; flex-shrink: 0; }
+  .history-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--fg); }
+  .history-date { color: var(--muted); font-size: 12px; white-space: nowrap; flex-shrink: 0; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
