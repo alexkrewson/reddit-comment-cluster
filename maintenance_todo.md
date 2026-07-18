@@ -14,6 +14,14 @@ after each step so progress survives a crash. See the approved plan for full rat
       icon button + localStorage persistence, 44px touch targets on all interactive
       elements, uppercase label pattern for section headers/badges. User chose this over
       staying pinned to Argument Mapper's light theme when the two conflicted.
+- [x] 3c. Doc updated again: switched dark tokens to the folder-wide "Ember" theme
+      (amber-black canvas, amber/teal accent pair) and fixed button text contrast with
+      --text-on-accent. Fixed a real alignment bug the doc calls out directly: the 4
+      Analyze-tab rows used independent flexbox so buttons didn't line up (different
+      label lengths); converted to one shared CSS grid (.row-form).
+- [ ] 3d. Consolidate the standalone theme-toggle + top-of-page auth into a single
+      Settings menu (Account/Themes/About/Help) per the doc's settings-menu recipe,
+      with an About overlay (nav + scrollspy).
 - [x] 4. Tab structure: Analyze (default, inputs+results) / History tabs
 - [x] 5. History titles: YouTube oEmbed title fetch + fallback truncation for any
       unresolvable identifier

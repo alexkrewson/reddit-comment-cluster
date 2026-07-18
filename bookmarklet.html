@@ -5,23 +5,27 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Analyzer</title>
 <style>
-  /* Design tokens from ~/apps/shared/css-best-practices.md: dark-first canvas,
-     explicit [data-theme="light"] opt-in (never prefers-color-scheme). */
+  /* Design tokens from ~/apps/shared/css-best-practices.md: dark-first "Ember"
+     canvas (folder-wide default theme), explicit [data-theme="light"] opt-in
+     (never prefers-color-scheme). */
   :root {
-    --bg-canvas:  #070b12;
-    --bg-surface: #0f172a;
-    --bg-raised:  #1e293b;
-    --border:     #334155;
-    --border-strong: #475569;
+    --bg-canvas:  #1e1508;
+    --bg-surface: #2b1f10;
+    --bg-raised:  #3a2b18;
+    --border:     #4a3820;
+    --border-strong: #6b5230;
 
-    --text-primary:   #f1f5f9;
-    --text-secondary: #94a3b8;
-    --text-tertiary:  #64748b;
+    --text-primary:   #f5ece0;
+    --text-secondary: #b8a890;
+    --text-tertiary:  #8a7d68;
+    --text-on-accent: #14100a;
 
-    --accent-cool: #5b84a8;
-    --accent-warm: #b8825a;
-    --accent: var(--accent-cool);
-    --accent-glow: rgba(91, 132, 168, 0.18);
+    --accent-amber: #b87040;
+    --accent-amber-border: #7a4820;
+    --accent-teal: #3d8c7a;
+    --accent-teal-border: #255c50;
+    --accent: var(--accent-teal);
+    --accent-glow: rgba(61, 140, 122, 0.18);
 
     --success: #22c55e; --success-dark: #16a34a; --success-bg: #f0fdf422; --success-text: #4ade80;
     --danger:  #ef4444; --danger-dark:  #dc2626;  --danger-bg:  #fef2f222; --danger-text:  #f87171;
@@ -39,6 +43,7 @@
     --text-primary:   #0f172a;
     --text-secondary: #64748b;
     --text-tertiary:  #94a3b8;
+    --text-on-accent: #0f172a;
     --success-bg: #f0fdf4; --success-text: #166534;
     --danger-bg:  #fef2f2; --danger-text:  #991b1b;
     --warning-bg: #fff7ed; --warning-text: #9a3412;
@@ -77,6 +82,19 @@
     gap: 8px;
     margin-bottom: 16px;
   }
+  /* Repeated-row form (shared best-practices alignment rule): one grid, not
+     independent per-row flexbox, so every row's input/button columns line up
+     exactly regardless of how long that row's button label is. */
+  .row-form {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 0.6rem 0.75rem;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .row-form input { grid-column: 1; min-width: 0; }
+  .row-form button.secondary { grid-column: 2; }
+  .row-form button.primary { grid-column: 3; }
   input[type="url"], input[type="text"], input[type="password"], input[type="email"] {
     flex: 1;
     padding: 0.5rem 0.75rem;
@@ -95,7 +113,7 @@
     padding: 0.5rem 1.5rem;
     min-height: 44px;
     background: var(--accent);
-    color: #fff;
+    color: var(--text-on-accent);
     border: none;
     border-radius: 6px;
     font-size: 0.85rem;
@@ -150,7 +168,7 @@
     background: var(--accent);
     border: none;
     border-radius: 6px;
-    color: #fff;
+    color: var(--text-on-accent);
     font-weight: 500;
     cursor: pointer;
     font-size: 0.85rem;
@@ -321,25 +339,19 @@
 
 <div id="tab-analyze" class="tab-panel tab-panel--active">
 
-<div class="input-row">
+<div class="row-form">
   <input id="url-input" type="url" placeholder="Paste Reddit post URL here…" autocomplete="off" autocorrect="off" spellcheck="false">
   <button id="download-post-btn" class="secondary">Download Raw Data</button>
   <button id="analyze-btn" class="primary">Analyze Post</button>
-</div>
 
-<div class="input-row">
   <input id="user-input" type="text" placeholder="Reddit username or u/username…" autocomplete="off" autocorrect="off" spellcheck="false">
   <button id="download-user-btn" class="secondary">Download Raw Data</button>
   <button id="user-btn" class="primary">Analyze User</button>
-</div>
 
-<div class="input-row">
   <input id="subreddit-input" type="text" placeholder="Subreddit or r/subreddit…" autocomplete="off" autocorrect="off" spellcheck="false">
   <button id="download-subreddit-btn" class="secondary">Download Raw Data</button>
   <button id="subreddit-btn" class="primary">Check Vibe</button>
-</div>
 
-<div class="input-row">
   <input id="yt-input" type="url" placeholder="Paste YouTube URL here…" autocomplete="off" autocorrect="off" spellcheck="false">
   <button id="yt-fetch-btn" class="primary">Get Transcript</button>
 </div>
