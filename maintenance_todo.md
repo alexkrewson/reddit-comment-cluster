@@ -3,8 +3,8 @@
 Tracking checklist for the Analyzer update spec. Checked off as completed, with a commit
 after each step so progress survives a crash. See the approved plan for full rationale.
 
-- [ ] 1. Create this maintenance_todo.md
-- [ ] 2. Rename app "Reddit Comment Cluster" → "Analyzer" (titles/headings/metadata only;
+- [x] 1. Create this maintenance_todo.md
+- [x] 2. Rename app "Reddit Comment Cluster" → "Analyzer" (titles/headings/metadata only;
       repo name and GitHub Pages URL stay the same)
 - [ ] 3. Visual restyle to match Argument Mapper (light slate/blue palette, font stack,
       dark-mode variant)

@@ -1,6 +1,8 @@
-# Reddit Comment Cluster
+# Analyzer
 
-A client-side web app that uses Claude AI to analyze Reddit comment threads and user profiles. No server required — runs entirely in the browser, with a lightweight Cloudflare Worker acting as a CORS proxy.
+*(formerly "Reddit Comment Cluster")*
+
+A client-side web app that uses Claude AI to analyze Reddit comment threads, user profiles, and subreddit culture. No server required — runs entirely in the browser, with a lightweight Cloudflare Worker acting as a CORS proxy.
 
 **Live app:** https://alexkrewson.github.io/reddit-comment-cluster/bookmarklet.html
 
