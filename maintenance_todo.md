@@ -42,7 +42,9 @@ after each step so progress survives a crash. See the approved plan for full rat
       client-side fetch+clean, no Claude call, no token cost
 - [x] 8. Subreddit Vibe Check new tool (Worker route + Claude prompt + history + raw
       download)
-- [ ] 9a. Supabase migration SQL for token credits (profiles table, RPCs) — file only
+- [x] 9a. Supabase migration SQL for token credits (profiles table, RPCs) — file only,
+      `supabase-credits-migration.sql`, mirrors Argument Mapper's schema/RPC names
+      exactly for consistency; not yet run against the live DB
 - [ ] 9b. Worker: credit check/deduction on /claude, /create-checkout-session,
       /stripe-webhook routes
 - [ ] 9c. Frontend: credit balance display, Buy Credits modal, payment redirect handling,
