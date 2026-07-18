@@ -141,7 +141,14 @@ async function getAccessToken(env) {
 async function handleRequest(request, env, corsHeaders) {
   const url = new URL(request.url);
 
-  // --- Claude proxy (token-metered — see /claude credit check below) ---
+  // Billing (credit-check/deduction + Stripe routes) is gated behind this var
+  // rather than always-on, so the Worker can be deployed for non-billing fixes
+  // (e.g. new Reddit routes) without depending on the `profiles` table existing.
+  // Set BILLING_ENABLED=true (wrangler var, not a secret) once the Supabase
+  // side is ready — see HANDOFF.md "Token-based credits".
+  const billingEnabled = env.BILLING_ENABLED === 'true';
+
+  // --- Claude proxy (token-metered once billingEnabled — see credit check below) ---
   if (url.pathname === '/claude') {
     const auth = request.headers.get('Authorization') || '';
     if (!auth.startsWith('Bearer ')) {
@@ -154,9 +161,12 @@ async function handleRequest(request, env, corsHeaders) {
       return new Response(JSON.stringify({ error: 'Unauthorized: ' + e.message }), { status: 401, headers: corsHeaders });
     }
 
-    const credits = await getOrCreateProfile(user.id, env);
-    if (credits <= 0) {
-      return new Response(JSON.stringify({ error: 'out_of_credits', credits }), { status: 402, headers: corsHeaders });
+    let credits = null;
+    if (billingEnabled) {
+      credits = await getOrCreateProfile(user.id, env);
+      if (credits <= 0) {
+        return new Response(JSON.stringify({ error: 'out_of_credits', credits }), { status: 402, headers: corsHeaders });
+      }
     }
 
     const body = await request.text();
@@ -171,33 +181,35 @@ async function handleRequest(request, env, corsHeaders) {
     });
 
     const resultText = await claudeResp.text();
-    let creditsRemaining = credits;
-    if (claudeResp.ok) {
-      try {
-        const usage = JSON.parse(resultText).usage;
-        if (usage) {
-          const cost = usage.input_tokens * INPUT_CENTS_PER_TOKEN + usage.output_tokens * OUTPUT_CENTS_PER_TOKEN;
-          creditsRemaining = await callCreditsRpc('deduct_credits', user.id, cost, env);
+    const responseHeaders = { ...corsHeaders };
+
+    if (billingEnabled) {
+      let creditsRemaining = credits;
+      if (claudeResp.ok) {
+        try {
+          const usage = JSON.parse(resultText).usage;
+          if (usage) {
+            const cost = usage.input_tokens * INPUT_CENTS_PER_TOKEN + usage.output_tokens * OUTPUT_CENTS_PER_TOKEN;
+            creditsRemaining = await callCreditsRpc('deduct_credits', user.id, cost, env);
+          }
+        } catch (e) {
+          // Don't fail the response if deduction bookkeeping errors — the user
+          // already got their answer; a bookkeeping miss is cheaper than a
+          // false error on a successful analysis.
         }
-      } catch (e) {
-        // Don't fail the response if deduction bookkeeping errors — the user
-        // already got their answer; a bookkeeping miss is cheaper than a
-        // false error on a successful analysis.
       }
+      responseHeaders['Access-Control-Expose-Headers'] = 'X-Credits-Remaining';
+      responseHeaders['X-Credits-Remaining'] = String(creditsRemaining);
     }
 
-    return new Response(resultText, {
-      status: claudeResp.status,
-      headers: {
-        ...corsHeaders,
-        'Access-Control-Expose-Headers': 'X-Credits-Remaining',
-        'X-Credits-Remaining': String(creditsRemaining),
-      },
-    });
+    return new Response(resultText, { status: claudeResp.status, headers: responseHeaders });
   }
 
   // --- Stripe: create a Checkout session for a credit top-up ---
   if (url.pathname === '/create-checkout-session' && request.method === 'POST') {
+    if (!billingEnabled) {
+      return new Response(JSON.stringify({ error: 'billing_not_enabled' }), { status: 503, headers: corsHeaders });
+    }
     const auth = request.headers.get('Authorization') || '';
     if (!auth.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'sign_in_required' }), { status: 401, headers: corsHeaders });
@@ -249,6 +261,9 @@ async function handleRequest(request, env, corsHeaders) {
 
   // --- Stripe: webhook for completed checkouts (adds credits) ---
   if (url.pathname === '/stripe-webhook' && request.method === 'POST') {
+    if (!billingEnabled) {
+      return new Response('billing_not_enabled', { status: 503 });
+    }
     const sig = request.headers.get('stripe-signature');
     if (!sig || !env.STRIPE_WEBHOOK_SECRET) {
       return new Response('Missing signature or webhook secret', { status: 400 });

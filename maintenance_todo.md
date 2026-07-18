@@ -69,9 +69,15 @@ after each step so progress survives a crash. See the approved plan for full rat
             before this app's Supabase setup gets any more surface area added. Running
             `supabase-credits-migration.sql` against the live `xjcdicxchvmujjfnpbia`
             project now would just mean redoing it against the consolidated project
-            later, so it's parked. This also holds the Worker deploy (its /claude route
-            would query a `profiles` table that doesn't exist yet and break Claude
-            analysis for everyone) and the Stripe webhook setup. All step 9 code stays
-            committed locally, unpushed, so the live site is unaffected — no Buy Credits
-            button visible until the Supabase side is ready. Resume when the
-            consolidation lands (or sooner if directed to proceed anyway).
+            later, so it's parked. All step 9 code stays committed locally, unpushed,
+            so the live site is unaffected — no Buy Credits button visible until the
+            Supabase side is ready. Resume when the consolidation lands (or sooner if
+            directed to proceed anyway).
+      - [x] Un-blocked the Worker deploy itself: added a `BILLING_ENABLED` env-var gate
+            around all billing logic (credit-check/deduction on /claude,
+            /create-checkout-session, /stripe-webhook) so the same committed worker
+            file can be deployed now — with billing routes present but inert (503) and
+            /claude behaving exactly as it does today — to ship the new Subreddit Vibe
+            Check route without touching Supabase. Flip `BILLING_ENABLED=true` (a
+            wrangler var, not a secret) once the Supabase side is ready; no code
+            changes needed at that point.
