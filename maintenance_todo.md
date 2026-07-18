@@ -81,3 +81,16 @@ after each step so progress survives a crash. See the approved plan for full rat
             Check route without touching Supabase. Flip `BILLING_ENABLED=true` (a
             wrangler var, not a secret) once the Supabase side is ready; no code
             changes needed at that point.
+      - [ ] **PINNED (2026-07-18): Worker deploy is ready, waiting on the user.** Code
+            is committed (`dd26deb`); nothing left to build. I don't hold a Cloudflare
+            API token in-session, so the user opted to run it themselves:
+            ```bash
+            cd /home/alex/apps/comment_cluster_claude
+            CLOUDFLARE_API_TOKEN=<token> npx wrangler deploy
+            ```
+            `wrangler.toml` already has name/main/compatibility_date set; system Node
+            (v22) satisfies wrangler's v20+ requirement, no PATH workaround needed.
+            Once deployed: Subreddit Vibe Check goes live; nothing else changes
+            (billing stays off via the `BILLING_ENABLED` gate above). No further action
+            needed from me until either (a) the user confirms it's deployed, or
+            (b) the Supabase consolidation lands and payments can be picked back up.
