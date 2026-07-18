@@ -376,6 +376,40 @@
     overflow: hidden;
   }
   #about-close-btn { position: absolute; top: 8px; right: 8px; z-index: 1; }
+  /* --- Generic modal card (Buy Credits, etc.) --- */
+  .modal-card {
+    position: relative;
+    background: var(--bg-raised);
+    color: var(--text-primary);
+    border-radius: 10px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    max-width: 440px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+    padding: 1.25rem 1.5rem;
+  }
+  .credits-modal-title { font-size: 1rem; margin: 0 0 6px; padding-right: 32px; }
+  .credits-packs { display: flex; gap: 0.6rem; margin: 1rem 0; }
+  .credits-pack-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-height: 60px;
+    padding: 0.6rem 0.4rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    cursor: pointer;
+  }
+  .credits-pack-btn:hover:not(:disabled) { border-color: var(--accent); }
+  .credits-pack-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .credits-pack-amount { font-size: 1rem; font-weight: 700; }
+  .credits-pack-desc { font-size: 0.7rem; color: var(--text-secondary); }
   .about-page { display: flex; align-items: flex-start; height: 100%; overflow: hidden; }
   .about-nav {
     flex-shrink: 0;
@@ -475,7 +509,11 @@
         <p id="auth-sent-note" class="help-text" style="display:none;">Magic link sent — check your email.</p>
         <div id="auth-logged-in-note" style="display:none;">
           <p id="auth-email-display" class="settings-user-email"></p>
-          <button id="auth-signout-btn" class="secondary">Sign out</button>
+          <p id="credit-balance-display" class="settings-user-email"></p>
+          <div style="display:flex; gap:0.5rem; margin-top:4px;">
+            <button id="buy-credits-btn" class="secondary">Buy Credits</button>
+            <button id="auth-signout-btn" class="secondary">Sign out</button>
+          </div>
         </div>
       </div>
 
@@ -549,6 +587,29 @@
         </section>
       </div>
     </div>
+  </div>
+</div>
+
+<div id="credits-overlay" class="modal-backdrop" style="display:none">
+  <div class="modal-card credits-modal">
+    <button id="credits-close-btn" class="icon-btn" style="position:absolute; top:8px; right:8px;" title="Close" aria-label="Close">✕</button>
+    <h2 class="credits-modal-title">Buy AI Credits</h2>
+    <p class="help-text">Credits are deducted based on actual token usage. You'll be taken to Stripe's secure checkout in a new tab — credits appear in your account within seconds of payment.</p>
+    <div class="credits-packs">
+      <button class="credits-pack-btn" data-cents="50">
+        <span class="credits-pack-amount">50¢</span>
+        <span class="credits-pack-desc">Starter</span>
+      </button>
+      <button class="credits-pack-btn" data-cents="200">
+        <span class="credits-pack-amount">$2</span>
+        <span class="credits-pack-desc">Standard</span>
+      </button>
+      <button class="credits-pack-btn" data-cents="500">
+        <span class="credits-pack-amount">$5</span>
+        <span class="credits-pack-desc">Value</span>
+      </button>
+    </div>
+    <p id="credits-modal-error" class="help-text" style="display:none; color:var(--danger-text);"></p>
   </div>
 </div>
 
@@ -751,12 +812,100 @@ function setAuthUI(session) {
     document.getElementById('auth-email-display').textContent = session.user.email;
     appContent.style.display = 'block';
     loadHistory();
+    refreshCreditBalance();
   } else {
     authLoggedOut.style.display = 'flex';
     authSentNote.style.display = 'none';
     authLoggedInNote.style.display = 'none';
     appContent.style.display = 'none';
     renderHistory([]);
+    creditBalance = null;
+    updateCreditDisplay();
+  }
+}
+
+// ---- Credits (balance display + Buy Credits modal) ----
+let creditBalance = null;
+
+function updateCreditDisplay() {
+  const el = document.getElementById('credit-balance-display');
+  el.textContent = creditBalance == null ? '' : '$' + (creditBalance / 100).toFixed(2) + ' in credits';
+}
+
+async function refreshCreditBalance() {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (!session) { creditBalance = null; updateCreditDisplay(); return; }
+  const { data } = await supabaseClient.from('profiles').select('credits_cents').eq('id', session.user.id).single();
+  creditBalance = data ? data.credits_cents : null;
+  updateCreditDisplay();
+}
+
+const creditsOverlay = document.getElementById('credits-overlay');
+const creditsModalError = document.getElementById('credits-modal-error');
+
+function openBuyCreditsModal() {
+  creditsModalError.style.display = 'none';
+  creditsOverlay.style.display = 'flex';
+}
+document.getElementById('buy-credits-btn').addEventListener('click', openBuyCreditsModal);
+document.getElementById('credits-close-btn').addEventListener('click', function() { creditsOverlay.style.display = 'none'; });
+creditsOverlay.addEventListener('click', function(e) { if (e.target === creditsOverlay) creditsOverlay.style.display = 'none'; });
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && creditsOverlay.style.display !== 'none') creditsOverlay.style.display = 'none';
+});
+
+document.querySelectorAll('.credits-pack-btn').forEach(function(btn) {
+  btn.addEventListener('click', async function() {
+    const cents = parseInt(btn.dataset.cents, 10);
+    document.querySelectorAll('.credits-pack-btn').forEach(function(b) { b.disabled = true; });
+    creditsModalError.style.display = 'none';
+    try {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (!session) throw new Error('Please sign in first.');
+      const origin = window.location.origin + window.location.pathname;
+      const resp = await fetch(WORKER_URL + '/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
+        body: JSON.stringify({
+          amount_cents: cents,
+          success_url: origin + '?payment=success&session_id={CHECKOUT_SESSION_ID}',
+          cancel_url: origin + '?payment=cancelled',
+        }),
+      });
+      if (!resp.ok) throw new Error("Couldn't start checkout. Try again.");
+      const { url } = await resp.json();
+      window.open(url, '_blank');
+      creditsOverlay.style.display = 'none';
+    } catch (e) {
+      creditsModalError.textContent = e.message;
+      creditsModalError.style.display = 'block';
+    } finally {
+      document.querySelectorAll('.credits-pack-btn').forEach(function(b) { b.disabled = false; });
+    }
+  });
+});
+
+// Clean up the ?payment= redirect from Stripe Checkout and refresh the balance
+// (the webhook usually lands within a couple seconds of redirect).
+(function handlePaymentRedirect() {
+  const params = new URLSearchParams(window.location.search);
+  const payment = params.get('payment');
+  if (payment !== 'success' && payment !== 'cancelled') return;
+  window.history.replaceState({}, '', window.location.origin + window.location.pathname);
+  if (payment === 'success') {
+    setStatus('Payment received — refreshing your credit balance…');
+    setTimeout(refreshCreditBalance, 1500);
+  }
+})();
+
+// Out-of-credits (402) handling for the four AI-analysis call sites, so the
+// user sees the Buy Credits modal instead of a generic error.
+function handleAnalysisError(e) {
+  if (e.code === 'out_of_credits') {
+    setStatus("You're out of credits — buy more to continue.", true);
+    openBuyCreditsModal();
+  } else {
+    setStatus('Error: ' + e.message, true);
   }
 }
 
@@ -797,9 +946,14 @@ async function claudeRequest(body) {
   });
   if (!resp.ok) {
     const err = await resp.json().catch(function() { return { error: resp.statusText }; });
-    const msg = typeof err.error === 'string' ? err.error : (err.error && err.error.message) || JSON.stringify(err);
-    throw new Error('API error ' + resp.status + ': ' + msg);
+    const code = typeof err.error === 'string' ? err.error : null;
+    const msg = code || (err.error && err.error.message) || JSON.stringify(err);
+    const e = new Error(resp.status === 402 ? "You're out of credits." : ('API error ' + resp.status + ': ' + msg));
+    if (resp.status === 402 || code === 'out_of_credits') e.code = 'out_of_credits';
+    throw e;
   }
+  const remaining = resp.headers.get('X-Credits-Remaining');
+  if (remaining != null) { creditBalance = parseFloat(remaining); updateCreditDisplay(); }
   return resp.json();
 }
 
@@ -1017,7 +1171,7 @@ async function analyze() {
     saveAnalysis('reddit_post', url, post.title, postMeta, analysis).then(loadHistory);
 
   } catch (e) {
-    setStatus('Error: ' + e.message, true);
+    handleAnalysisError(e);
   } finally {
     btn.disabled = false;
   }
@@ -1166,7 +1320,7 @@ async function analyzeUser() {
     saveAnalysis('reddit_user', username, 'u/' + username, userMeta, result.content[0].text).then(loadHistory);
 
   } catch (e) {
-    setStatus('Error: ' + e.message, true);
+    handleAnalysisError(e);
   } finally {
     userBtn.disabled = false;
   }
@@ -1278,7 +1432,7 @@ async function checkSubredditVibe() {
     saveAnalysis('subreddit_vibe', subreddit, subTitle, subMeta, result.content[0].text).then(loadHistory);
 
   } catch (e) {
-    setStatus('Error: ' + e.message, true);
+    handleAnalysisError(e);
   } finally {
     subredditBtn.disabled = false;
   }
@@ -1424,7 +1578,7 @@ async function analyzeTranscript() {
     saveAnalysis('youtube_analysis', ytInput.value.trim(), analysisTitle, ytMeta, result.content[0].text).then(loadHistory);
 
   } catch (e) {
-    setStatus('Error: ' + e.message, true);
+    handleAnalysisError(e);
   } finally {
     ytAnalyzeBtn.disabled = false;
   }

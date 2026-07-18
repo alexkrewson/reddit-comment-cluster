@@ -51,8 +51,9 @@ after each step so progress survives a crash. See the approved plan for full rat
       placeholder — this app calls claude-opus-4-6, a different and pricier
       model, so those constants need updating to real Opus pricing or the app
       will undercharge relative to actual Anthropic cost.
-- [ ] 9c. Frontend: credit balance display, Buy Credits modal, payment redirect handling,
-      402/out-of-credits UX
+- [x] 9c. Frontend: credit balance display (Settings → Account), Buy Credits modal
+      (50c/$2/$5 packs), ?payment=success|cancelled redirect handling, 402/
+      out-of-credits UX that opens the Buy Credits modal on all 4 AI call sites
 - [ ] 10. Update README/HANDOFF/DEPLOY docs for new architecture + Stripe secrets +
       one-time Supabase SQL step
 - [ ] 11. Pause for manual testing — round 1 (everything except payments)
