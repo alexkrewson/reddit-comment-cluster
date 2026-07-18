@@ -477,6 +477,19 @@ function removeUrls(text) {
   return text.replace(/(https?:\/\/\S+|www\.\S+|\[.*?\]\(https?:\/\/.*?\))/g, '');
 }
 
+// Accepts "u/name", "r/name", full profile/subreddit URLs (any reddit.com subdomain),
+// or a bare name, and normalizes to just the name — so users never need to know or
+// care about the correct format for username/subreddit fields.
+function normalizeRedditIdentifier(input, kind) {
+  var s = String(input || '').trim();
+  s = s.replace(/^https?:\/\//i, '');
+  s = s.replace(/^(www\.|old\.|new\.|amp\.|m\.)?reddit\.com\//i, '');
+  s = s.replace(/^\/+/, '');
+  s = kind === 'subreddit' ? s.replace(/^r\//i, '') : s.replace(/^u(ser)?\//i, '');
+  s = s.split(/[/?#]/)[0];
+  return s.trim();
+}
+
 function flattenComments(kids, out) {
   out = out || [];
   for (var i = 0; i < kids.length; i++) {
@@ -607,7 +620,7 @@ async function workerFetch(params) {
 }
 
 async function analyzeUser() {
-  const username = userInput.value.trim().replace(/^u\//, '');
+  const username = normalizeRedditIdentifier(userInput.value, 'user');
   if (!username) { setStatus('Please enter a Reddit username.', true); return; }
 
   userBtn.disabled = true;
