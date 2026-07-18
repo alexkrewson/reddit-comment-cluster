@@ -272,6 +272,12 @@
 </div>
 
 <div class="input-row">
+  <input id="subreddit-input" type="text" placeholder="Subreddit or r/subreddit…" autocomplete="off" autocorrect="off" spellcheck="false">
+  <button id="download-subreddit-btn" class="secondary">Download Raw Data</button>
+  <button id="subreddit-btn" class="primary">Check Vibe</button>
+</div>
+
+<div class="input-row">
   <input id="yt-input" type="url" placeholder="Paste YouTube URL here…" autocomplete="off" autocorrect="off" spellcheck="false">
   <button id="yt-fetch-btn" class="primary">Get Transcript</button>
 </div>
@@ -425,7 +431,7 @@ async function loadHistory() {
   renderHistory(data || []);
 }
 
-const TYPE_LABELS = { reddit_post: 'Post', reddit_user: 'User', youtube_transcript: 'Transcript', youtube_analysis: 'YT Analysis' };
+const TYPE_LABELS = { reddit_post: 'Post', reddit_user: 'User', subreddit_vibe: 'Vibe Check', youtube_transcript: 'Transcript', youtube_analysis: 'YT Analysis' };
 
 function renderHistory(items) {
   const list = document.getElementById('history-list');
@@ -794,6 +800,112 @@ userBtn.addEventListener('click', analyzeUser);
 downloadUserBtn.addEventListener('click', downloadUserRawData);
 userInput.addEventListener('keydown', function(e) {
   if (e.key === 'Enter') analyzeUser();
+});
+
+const subredditInput = document.getElementById('subreddit-input');
+const subredditBtn = document.getElementById('subreddit-btn');
+const downloadSubredditBtn = document.getElementById('download-subreddit-btn');
+
+// Fetches a sample of a subreddit's top posts (and top comments from a few of them)
+// exactly as the Claude flow does, without calling Claude. Shared by
+// checkSubredditVibe() and downloadSubredditRawData().
+async function fetchSubredditData(subreddit) {
+  setStatus('Fetching top posts from r/' + subreddit + '…');
+  const listing = await workerFetch({ subreddit: subreddit, listing: 'top' });
+  const posts = (listing.data.children || []).map(function(c) {
+    const d = c.data;
+    return { id: d.id, title: d.title, selftext: removeUrls(d.selftext || ''), score: d.score, numComments: d.num_comments, author: d.author };
+  });
+  if (!posts.length) throw new Error('No posts found for r/' + subreddit + ' (check the name and try again).');
+
+  // Pull top comments from the 5 highest-scoring posts for texture on how people engage.
+  setStatus('Sampling comments from top posts…');
+  const sampledPosts = posts.slice(0, 5);
+  const commentSamples = [];
+  for (var i = 0; i < sampledPosts.length; i++) {
+    try {
+      const data = await workerFetch({ id: sampledPosts[i].id });
+      const comments = flattenComments(data[1].data.children).sort(function(a, b) { return b.score - a.score; }).slice(0, 8);
+      commentSamples.push({ title: sampledPosts[i].title, comments: comments });
+    } catch (e) {
+      // Skip a post whose comments fail to load — the overall vibe check still works.
+    }
+  }
+
+  const postsText = posts.map(function(p) {
+    return 'Score: ' + p.score + ' | Comments: ' + p.numComments + '\n' + p.title + (p.selftext ? '\n' + p.selftext.slice(0, 500) : '');
+  }).join('\n---\n');
+
+  const commentsText = commentSamples.map(function(s) {
+    return 'Post: ' + s.title + '\n' + s.comments.map(function(c) { return c.author + ' (score ' + c.score + '): ' + c.body; }).join('\n');
+  }).join('\n---\n');
+
+  return { postCount: posts.length, postsText: postsText, commentsText: commentsText };
+}
+
+async function checkSubredditVibe() {
+  const subreddit = normalizeRedditIdentifier(subredditInput.value, 'subreddit');
+  if (!subreddit) { setStatus('Please enter a subreddit name.', true); return; }
+
+  subredditBtn.disabled = true;
+  results.className = '';
+
+  try {
+    const sub = await fetchSubredditData(subreddit);
+    setStatus('Sending to Claude for analysis…');
+
+    const prompt =
+      'Characterize the culture of the subreddit r/' + subreddit + ' based on this sample of ' + sub.postCount + ' top posts from the past month and comments from a few of the highest-scoring ones.\n\n' +
+      'TOP POSTS:\n' + sub.postsText + '\n\n' +
+      'SAMPLE COMMENTS:\n' + (sub.commentsText || '(none fetched)') + '\n\n' +
+      'Help someone "know the room" before posting or engaging here. Cover:\n' +
+      '1) **Tone** — how do people generally communicate? Friendly, snarky, formal, hostile?\n' +
+      '2) **Typical topics** — what does this community actually talk about?\n' +
+      '3) **Engagement style** — how do members interact with each other and with new posters?\n' +
+      '4) **What performs well** — what kinds of posts get upvoted/highly engaged with?\n' +
+      '5) **Norms and red flags** — any notable rules, in-jokes, pet peeves, or things that get someone dogpiled?\n\n' +
+      'Be plain-spoken and specific. Format the output in markdown.';
+
+    const result = await claudeRequest({
+      model: 'claude-opus-4-6',
+      max_tokens: 4096,
+      messages: [{ role: 'user', content: prompt }]
+    });
+    const subMeta = sub.postCount + ' posts sampled · claude-opus-4-6';
+    const subTitle = 'r/' + subreddit;
+    showResult(subTitle, subMeta, result.content[0].text);
+    saveAnalysis('subreddit_vibe', subreddit, subTitle, subMeta, result.content[0].text).then(loadHistory);
+
+  } catch (e) {
+    setStatus('Error: ' + e.message, true);
+  } finally {
+    subredditBtn.disabled = false;
+  }
+}
+
+async function downloadSubredditRawData() {
+  const subreddit = normalizeRedditIdentifier(subredditInput.value, 'subreddit');
+  if (!subreddit) { setStatus('Please enter a subreddit name.', true); return; }
+
+  downloadSubredditBtn.disabled = true;
+  try {
+    const sub = await fetchSubredditData(subreddit);
+    const fileText = 'r/' + subreddit + ' — ' + sub.postCount + ' top posts (past month)\n\n' +
+      'TOP POSTS:\n' + sub.postsText + '\n\n' +
+      'SAMPLE COMMENTS:\n' + (sub.commentsText || '(none fetched)');
+    downloadTextFile('r-' + slugify(subreddit) + '-raw.txt', fileText);
+    clearStatus();
+  } catch (e) {
+    setStatus('Error: ' + e.message, true);
+  } finally {
+    downloadSubredditBtn.disabled = false;
+  }
+}
+
+subredditBtn.addEventListener('click', checkSubredditVibe);
+downloadSubredditBtn.addEventListener('click', downloadSubredditRawData);
+subredditInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') checkSubredditVibe();
 });
 
 const ytInput = document.getElementById('yt-input');

@@ -123,6 +123,19 @@ async function handleRequest(request, env, corsHeaders) {
     return new Response(body, { status: resp.status, headers: corsHeaders });
   }
 
+  // --- Subreddit Vibe Check: top posts, or comments for one post via &id= ---
+  const subreddit = url.searchParams.get('subreddit');
+  if (subreddit) {
+    const listing = url.searchParams.get('listing') || 'top';
+    const redditUrl = `https://oauth.reddit.com/r/${encodeURIComponent(subreddit)}/${listing}?limit=25&t=month&raw_json=1`;
+    const resp = await fetch(redditUrl, { headers });
+    if (!resp.ok) {
+      return new Response(JSON.stringify({ error: 'Reddit returned ' + resp.status }), { status: resp.status, headers: corsHeaders });
+    }
+    const body = await resp.text();
+    return new Response(body, { status: resp.status, headers: corsHeaders });
+  }
+
   let id = url.searchParams.get('id');
   const rawUrl = url.searchParams.get('url');
 
