@@ -708,6 +708,27 @@ const ytInput = document.getElementById('yt-input');
 const ytFetchBtn = document.getElementById('yt-fetch-btn');
 const transcriptBox = document.getElementById('transcript-box');
 let currentTranscriptEntries = [];
+let currentVideoTitle = '';
+
+// Fallback history title for any identifier we can't resolve a real title for:
+// strips the protocol, trims trailing slash, and truncates to a reasonable length.
+function fallbackTitle(identifier, max) {
+  max = max || 60;
+  var cleaned = String(identifier).replace(/^https?:\/\//, '').replace(/\/$/, '').trim();
+  return cleaned.length > max ? cleaned.slice(0, max - 1) + '…' : cleaned;
+}
+
+// YouTube's oEmbed endpoint is CORS-enabled and needs no API key.
+async function fetchYoutubeTitle(url) {
+  try {
+    const resp = await fetch('https://www.youtube.com/oembed?url=' + encodeURIComponent(url) + '&format=json');
+    if (!resp.ok) throw new Error('oEmbed ' + resp.status);
+    const data = await resp.json();
+    return data.title || fallbackTitle(url);
+  } catch (e) {
+    return fallbackTitle(url);
+  }
+}
 
 async function fetchYoutubeTranscript() {
   const url = ytInput.value.trim();
@@ -733,10 +754,9 @@ async function fetchYoutubeTranscript() {
     transcriptBox.className = 'visible';
     clearStatus();
 
-    const vidMatch = url.match(/[?&]v=([^&]+)/) || url.match(/youtu\.be\/([^?&/]+)/);
-    const transcriptTitle = vidMatch ? 'YouTube: ' + vidMatch[1] : 'YouTube Transcript';
+    currentVideoTitle = await fetchYoutubeTitle(url);
     const transcriptText = data.entries.map(function(e) { return '[' + e.time + '] ' + e.text; }).join('\n');
-    saveAnalysis('youtube_transcript', url, transcriptTitle, data.entries.length + ' entries', transcriptText).then(loadHistory);
+    saveAnalysis('youtube_transcript', url, currentVideoTitle, data.entries.length + ' entries', transcriptText).then(loadHistory);
 
   } catch (e) {
     setStatus('Error: ' + e.message, true);
@@ -794,8 +814,9 @@ async function analyzeTranscript() {
       messages: [{ role: 'user', content: prompt }]
     });
     const ytMeta = currentTranscriptEntries.length + ' entries · claude-opus-4-6';
-    showResult('YouTube Transcript Analysis', ytMeta, result.content[0].text);
-    saveAnalysis('youtube_analysis', ytInput.value.trim(), 'YouTube Transcript Analysis', ytMeta, result.content[0].text).then(loadHistory);
+    const analysisTitle = (currentVideoTitle || 'YouTube Transcript') + ' — Analysis';
+    showResult(analysisTitle, ytMeta, result.content[0].text);
+    saveAnalysis('youtube_analysis', ytInput.value.trim(), analysisTitle, ytMeta, result.content[0].text).then(loadHistory);
 
   } catch (e) {
     setStatus('Error: ' + e.message, true);

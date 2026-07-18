@@ -9,7 +9,7 @@ after each step so progress survives a crash. See the approved plan for full rat
 - [x] 3. Visual restyle to match Argument Mapper (light slate/blue palette, font stack,
       dark-mode variant)
 - [x] 4. Tab structure: Analyze (default, inputs+results) / History tabs
-- [ ] 5. History titles: YouTube oEmbed title fetch + fallback truncation for any
+- [x] 5. History titles: YouTube oEmbed title fetch + fallback truncation for any
       unresolvable identifier
 - [ ] 6. Input normalization for Reddit username/subreddit fields
 - [ ] 7. Raw Data Download buttons (Reddit post, Reddit user, subreddit vibe check) —
