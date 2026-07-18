@@ -245,12 +245,19 @@
   <input id="auth-email" type="email" placeholder="Email address" autocomplete="email" spellcheck="false">
   <button id="auth-send-btn" class="primary">Send magic link</button>
 </div>
-<p id="auth-sent-note" style="display:none; font-size:13px; color:#818384; margin-bottom:16px;">Magic link sent — check your email.</p>
-<p id="auth-logged-in-note" style="display:none; font-size:13px; color:#818384; margin-bottom:16px;">
-  <span id="auth-email-display"></span> · <button id="auth-signout-btn" style="background:none;border:none;color:#ff4500;cursor:pointer;font-size:13px;padding:0;">Sign out</button>
+<p id="auth-sent-note" style="display:none; font-size:13px; color:var(--muted); margin-bottom:16px;">Magic link sent — check your email.</p>
+<p id="auth-logged-in-note" style="display:none; font-size:13px; color:var(--muted); margin-bottom:16px;">
+  <span id="auth-email-display"></span> · <button id="auth-signout-btn" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:13px;padding:0;">Sign out</button>
 </p>
 
 <div id="app-content" style="display:none">
+
+<nav class="tab-bar">
+  <button class="tab-btn tab-btn--active" data-tab="analyze">Analyze</button>
+  <button class="tab-btn" data-tab="history">History</button>
+</nav>
+
+<div id="tab-analyze" class="tab-panel tab-panel--active">
 
 <div class="input-row">
   <input id="url-input" type="url" placeholder="Paste Reddit post URL here…" autocomplete="off" autocorrect="off" spellcheck="false">
@@ -267,11 +274,6 @@
   <button id="yt-fetch-btn" class="primary">Get Transcript</button>
 </div>
 
-<div id="history-section" style="display:none">
-  <p class="history-header">Recent analyses</p>
-  <div id="history-list"></div>
-</div>
-
 <div id="transcript-box">
   <div class="transcript-toolbar">
     <span class="transcript-meta" id="transcript-meta"></span>
@@ -282,8 +284,6 @@
   </div>
   <div class="transcript-entries" id="transcript-entries"></div>
 </div>
-
-</div> <!-- end #app-content -->
 
 <div id="status"></div>
 
@@ -297,6 +297,18 @@
   </div>
   <div id="output"></div>
 </div>
+
+</div> <!-- end #tab-analyze -->
+
+<div id="tab-history" class="tab-panel">
+  <div id="history-section">
+    <p class="history-header">Recent analyses</p>
+    <div id="history-list"></div>
+    <p id="history-empty" class="history-header" style="display:none">No analyses yet — results you run in the Analyze tab will show up here.</p>
+  </div>
+</div> <!-- end #tab-history -->
+
+</div> <!-- end #app-content -->
 
 <script>
 // ---- Supabase auth ----
@@ -312,6 +324,15 @@ const appContent = document.getElementById('app-content');
 const authLoggedOut = document.getElementById('auth-logged-out');
 const authSentNote = document.getElementById('auth-sent-note');
 const authLoggedInNote = document.getElementById('auth-logged-in-note');
+
+// ---- Tabs ----
+function activateTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.toggle('tab-btn--active', b.dataset.tab === name); });
+  document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.toggle('tab-panel--active', p.id === 'tab-' + name); });
+}
+document.querySelectorAll('.tab-btn').forEach(function(tabBtn) {
+  tabBtn.addEventListener('click', function() { activateTab(tabBtn.dataset.tab); });
+});
 
 function setAuthUI(session) {
   if (session) {
@@ -405,10 +426,10 @@ async function loadHistory() {
 const TYPE_LABELS = { reddit_post: 'Post', reddit_user: 'User', youtube_transcript: 'Transcript', youtube_analysis: 'YT Analysis' };
 
 function renderHistory(items) {
-  const section = document.getElementById('history-section');
   const list = document.getElementById('history-list');
-  if (!items.length) { section.style.display = 'none'; return; }
-  section.style.display = 'block';
+  const empty = document.getElementById('history-empty');
+  if (!items.length) { list.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
   list.innerHTML = items.map(function(item) {
     const date = new Date(item.created_at).toLocaleDateString();
     return '<div class="history-item" data-id="' + escapeHtml(item.id) + '">' +
@@ -421,6 +442,7 @@ function renderHistory(items) {
     var item = items.find(function(i) { return i.id === el.dataset.id; });
     if (!item) return;
     el.addEventListener('click', function() {
+      activateTab('analyze');
       showResult(item.title, item.meta || '', item.result);
     });
   });
