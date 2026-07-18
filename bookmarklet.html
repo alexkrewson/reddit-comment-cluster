@@ -261,11 +261,13 @@
 
 <div class="input-row">
   <input id="url-input" type="url" placeholder="Paste Reddit post URL here…" autocomplete="off" autocorrect="off" spellcheck="false">
+  <button id="download-post-btn" class="secondary">Download Raw Data</button>
   <button id="analyze-btn" class="primary">Analyze Post</button>
 </div>
 
 <div class="input-row">
-  <input id="user-input" type="text" placeholder="Reddit username (without u/)…" autocomplete="off" autocorrect="off" spellcheck="false">
+  <input id="user-input" type="text" placeholder="Reddit username or u/username…" autocomplete="off" autocorrect="off" spellcheck="false">
+  <button id="download-user-btn" class="secondary">Download Raw Data</button>
   <button id="user-btn" class="primary">Analyze User</button>
 </div>
 
@@ -451,8 +453,24 @@ function renderHistory(items) {
 // ---- App ----
 const input = document.getElementById('url-input');
 const btn = document.getElementById('analyze-btn');
+const downloadBtn = document.getElementById('download-post-btn');
 const status = document.getElementById('status');
 const results = document.getElementById('results');
+
+function slugify(s) {
+  return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'download';
+}
+
+function downloadTextFile(filename, content) {
+  const blob = new Blob([content], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+}
 
 function setStatus(msg, isError) {
   status.textContent = msg;
@@ -517,6 +535,47 @@ function flattenComments(kids, out) {
   return out;
 }
 
+// Fetches + cleans a post's comments exactly as the Claude flow does, without calling
+// Claude. Shared by analyze() (AI path) and downloadPostRawData() (free raw-data path).
+async function fetchPostData(url) {
+  setStatus('Resolving URL…');
+  const id = await resolveSubmissionId(url);
+  const workerUrl = id
+    ? WORKER_URL + '/?id=' + id
+    : WORKER_URL + '/?url=' + encodeURIComponent(url);
+
+  setStatus('Fetching comments…');
+  const workerResp = await fetch(workerUrl);
+  if (!workerResp.ok) {
+    const errData = await workerResp.json().catch(() => ({}));
+    throw new Error(errData.error || 'Worker error ' + workerResp.status);
+  }
+  const data = await workerResp.json();
+  if (!Array.isArray(data) || !data[0]) throw new Error('Unexpected response from Reddit API');
+
+  const title = data[0].data.children[0].data.title;
+  const comments = flattenComments(data[1].data.children);
+  const total = comments.length;
+
+  // Sort by score descending (DeltaBot always first due to score 1000000)
+  comments.sort(function(a, b) { return b.score - a.score; });
+
+  // Build text and trim by character count, preserving whole comments
+  const MAX = 90000;
+  var lines = [];
+  var len = 0;
+  var trimmed = false;
+  for (var i = 0; i < comments.length; i++) {
+    var line = comments[i].author + ': ' + comments[i].body;
+    if (len + line.length > MAX) { trimmed = true; break; }
+    lines.push(line);
+    len += line.length;
+  }
+  var text = lines.join('\n\n---\n\n');
+
+  return { title: title, total: total, trimmed: trimmed, text: text };
+}
+
 async function analyze() {
   const url = input.value.trim();
   if (!url) { setStatus('Please paste a Reddit URL.', true); return; }
@@ -525,47 +584,13 @@ async function analyze() {
   results.className = '';
 
   try {
-    setStatus('Resolving URL…');
-    const id = await resolveSubmissionId(url);
-    const workerUrl = id
-      ? WORKER_URL + '/?id=' + id
-      : WORKER_URL + '/?url=' + encodeURIComponent(url);
-
-    setStatus('Fetching comments…');
-    const workerResp = await fetch(workerUrl);
-    if (!workerResp.ok) {
-      const errData = await workerResp.json().catch(() => ({}));
-      throw new Error(errData.error || 'Worker error ' + workerResp.status);
-    }
-    const data = await workerResp.json();
-    if (!Array.isArray(data) || !data[0]) throw new Error('Unexpected response from Reddit API');
-
-    const title = data[0].data.children[0].data.title;
-    const comments = flattenComments(data[1].data.children);
-    const total = comments.length;
-
-    // Sort by score descending (DeltaBot always first due to score 1000000)
-    comments.sort(function(a, b) { return b.score - a.score; });
-
-    setStatus('Sending ' + total + ' comments to Claude…');
-
-    // Build text and trim by character count, preserving whole comments
-    const MAX = 90000;
-    var lines = [];
-    var len = 0;
-    var trimmed = false;
-    for (var i = 0; i < comments.length; i++) {
-      var line = comments[i].author + ': ' + comments[i].body;
-      if (len + line.length > MAX) { trimmed = true; break; }
-      lines.push(line);
-      len += line.length;
-    }
-    var text = lines.join('\n\n---\n\n');
+    const post = await fetchPostData(url);
+    setStatus('Sending ' + post.total + ' comments to Claude…');
 
     const prompt =
-      'Analyze Reddit comments from the post: "' + title + '"\n\n' +
-      'Total comments: ' + total + (trimmed ? ' (text trimmed to fit context limit)' : '') +
-      '\n\nComments:\n' + text +
+      'Analyze Reddit comments from the post: "' + post.title + '"\n\n' +
+      'Total comments: ' + post.total + (post.trimmed ? ' (text trimmed to fit context limit)' : '') +
+      '\n\nComments:\n' + post.text +
       '\n\nInstructions:\n' +
       '- Identify all distinct POINTS and ARGUMENTS made across the comments (not the comments themselves — a single comment may contain multiple distinct points)\n' +
       '- Include comments from DeltaBot\n' +
@@ -580,9 +605,9 @@ async function analyze() {
     });
     const analysis = result.content[0].text;
 
-    const postMeta = 'Analyzed ' + total + ' comments' + (trimmed ? ' (trimmed)' : '') + ' · claude-opus-4-6';
-    showResult(title, postMeta, analysis);
-    saveAnalysis('reddit_post', url, title, postMeta, analysis).then(loadHistory);
+    const postMeta = 'Analyzed ' + post.total + ' comments' + (post.trimmed ? ' (trimmed)' : '') + ' · claude-opus-4-6';
+    showResult(post.title, postMeta, analysis);
+    saveAnalysis('reddit_post', url, post.title, postMeta, analysis).then(loadHistory);
 
   } catch (e) {
     setStatus('Error: ' + e.message, true);
@@ -591,13 +616,33 @@ async function analyze() {
   }
 }
 
+async function downloadPostRawData() {
+  const url = input.value.trim();
+  if (!url) { setStatus('Please paste a Reddit URL.', true); return; }
+
+  downloadBtn.disabled = true;
+  try {
+    const post = await fetchPostData(url);
+    const fileText = 'Post: ' + post.title + '\nTotal comments: ' + post.total +
+      (post.trimmed ? ' (trimmed to fit)' : '') + '\n\nComments:\n' + post.text;
+    downloadTextFile(slugify(post.title) + '-raw.txt', fileText);
+    clearStatus();
+  } catch (e) {
+    setStatus('Error: ' + e.message, true);
+  } finally {
+    downloadBtn.disabled = false;
+  }
+}
+
 btn.addEventListener('click', analyze);
+downloadBtn.addEventListener('click', downloadPostRawData);
 input.addEventListener('keydown', function(e) {
   if (e.key === 'Enter') analyze();
 });
 
 const userInput = document.getElementById('user-input');
 const userBtn = document.getElementById('user-btn');
+const downloadUserBtn = document.getElementById('download-user-btn');
 
 function showResult(title, meta, text) {
   clearStatus();
@@ -619,6 +664,61 @@ async function workerFetch(params) {
   return resp.json();
 }
 
+// Fetches + cleans a user's account/comment/post history exactly as the Claude flow
+// does, without calling Claude. Shared by analyzeUser() and downloadUserRawData().
+async function fetchUserData(username) {
+  setStatus('Fetching account info…');
+  const about = await workerFetch({ user: username, type: 'about' });
+  const userData = about.data;
+  const accountAge = Math.floor((Date.now() / 1000 - userData.created_utc) / 86400);
+
+  // Fetch up to 3 pages of comments and 1 page of submitted posts
+  setStatus('Fetching comment history…');
+  const comments = [];
+  let after = '';
+  for (let page = 0; page < 3; page++) {
+    const params = { user: username, type: 'comments' };
+    if (after) params.after = after;
+    const data = await workerFetch(params);
+    const items = data.data.children;
+    if (!items || !items.length) break;
+    items.forEach(function(c) {
+      const d = c.data;
+      comments.push({ sub: d.subreddit, body: removeUrls(d.body || ''), score: d.score, date: new Date(d.created_utc * 1000).toLocaleDateString() });
+    });
+    after = data.data.after;
+    if (!after) break;
+  }
+
+  setStatus('Fetching post history…');
+  const submitted = [];
+  const subData = await workerFetch({ user: username, type: 'submitted' });
+  (subData.data.children || []).forEach(function(c) {
+    const d = c.data;
+    submitted.push({ sub: d.subreddit, title: d.title, score: d.score, date: new Date(d.created_utc * 1000).toLocaleDateString() });
+  });
+
+  const commentKarma = userData.comment_karma;
+  const postKarma = userData.link_karma;
+  const totalComments = comments.length;
+  const subs = [...new Set(comments.map(function(c) { return c.sub; }))];
+
+  // Build comment text, trimmed to fit
+  let commentLines = comments.map(function(c) {
+    return 'r/' + c.sub + ' | Score: ' + c.score + ' | ' + c.date + '\n' + c.body;
+  });
+  let commentText = commentLines.join('\n\n---\n\n');
+  const MAX = 70000;
+  let trimmed = false;
+  if (commentText.length > MAX) { commentText = commentText.slice(0, MAX) + '\n[trimmed]'; trimmed = true; }
+
+  const submittedText = submitted.map(function(p) {
+    return 'r/' + p.sub + ' | Score: ' + p.score + ' | ' + p.date + '\n' + p.title;
+  }).join('\n---\n');
+
+  return { accountAge, commentKarma, postKarma, totalComments, subs, commentText, submittedText, trimmed };
+}
+
 async function analyzeUser() {
   const username = normalizeRedditIdentifier(userInput.value, 'user');
   if (!username) { setStatus('Please enter a Reddit username.', true); return; }
@@ -627,67 +727,20 @@ async function analyzeUser() {
   results.className = '';
 
   try {
-    setStatus('Fetching account info…');
-    const about = await workerFetch({ user: username, type: 'about' });
-    const userData = about.data;
-    const accountAge = Math.floor((Date.now() / 1000 - userData.created_utc) / 86400);
-
-    // Fetch up to 3 pages of comments and 1 page of submitted posts
-    setStatus('Fetching comment history…');
-    const comments = [];
-    let after = '';
-    for (let page = 0; page < 3; page++) {
-      const params = { user: username, type: 'comments' };
-      if (after) params.after = after;
-      const data = await workerFetch(params);
-      const items = data.data.children;
-      if (!items || !items.length) break;
-      items.forEach(function(c) {
-        const d = c.data;
-        comments.push({ sub: d.subreddit, body: removeUrls(d.body || ''), score: d.score, date: new Date(d.created_utc * 1000).toLocaleDateString() });
-      });
-      after = data.data.after;
-      if (!after) break;
-    }
-
-    setStatus('Fetching post history…');
-    const submitted = [];
-    const subData = await workerFetch({ user: username, type: 'submitted' });
-    (subData.data.children || []).forEach(function(c) {
-      const d = c.data;
-      submitted.push({ sub: d.subreddit, title: d.title, score: d.score, date: new Date(d.created_utc * 1000).toLocaleDateString() });
-    });
-
+    const u = await fetchUserData(username);
     setStatus('Sending to Claude for analysis…');
-
-    const commentKarma = userData.comment_karma;
-    const postKarma = userData.link_karma;
-    const totalComments = comments.length;
-    const subs = [...new Set(comments.map(function(c) { return c.sub; }))];
-
-    // Build comment text, trimmed to fit
-    let commentLines = comments.map(function(c) {
-      return 'r/' + c.sub + ' | Score: ' + c.score + ' | ' + c.date + '\n' + c.body;
-    });
-    let commentText = commentLines.join('\n\n---\n\n');
-    const MAX = 70000;
-    if (commentText.length > MAX) commentText = commentText.slice(0, MAX) + '\n[trimmed]';
-
-    const submittedText = submitted.map(function(p) {
-      return 'r/' + p.sub + ' | Score: ' + p.score + ' | ' + p.date + '\n' + p.title;
-    }).join('\n---\n');
 
     const prompt =
       'Analyze this Reddit user: u/' + username + '\n\n' +
       'ACCOUNT STATS:\n' +
-      '- Account age: ' + accountAge + ' days\n' +
-      '- Comment karma: ' + commentKarma + '\n' +
-      '- Post karma: ' + postKarma + '\n' +
-      '- Comments fetched: ' + totalComments + '\n' +
-      '- Unique subreddits (comments): ' + subs.length + '\n' +
-      '- Top subreddits: ' + subs.slice(0, 15).join(', ') + '\n\n' +
-      'RECENT POSTS:\n' + (submittedText || '(none)') + '\n\n' +
-      'RECENT COMMENTS:\n' + commentText + '\n\n' +
+      '- Account age: ' + u.accountAge + ' days\n' +
+      '- Comment karma: ' + u.commentKarma + '\n' +
+      '- Post karma: ' + u.postKarma + '\n' +
+      '- Comments fetched: ' + u.totalComments + '\n' +
+      '- Unique subreddits (comments): ' + u.subs.length + '\n' +
+      '- Top subreddits: ' + u.subs.slice(0, 15).join(', ') + '\n\n' +
+      'RECENT POSTS:\n' + (u.submittedText || '(none)') + '\n\n' +
+      'RECENT COMMENTS:\n' + u.commentText + '\n\n' +
       'Please analyze this user across these four dimensions. Be clinical and precise, not provocative. ' +
       'Include direct quotes from their comments where relevant.\n\n' +
       '1) **Bot likelihood** — assess based on karma ratios, account age, posting frequency, comment patterns, and subreddit diversity.\n\n' +
@@ -701,7 +754,7 @@ async function analyzeUser() {
       max_tokens: 4096,
       messages: [{ role: 'user', content: prompt }]
     });
-    const userMeta = totalComments + ' comments · ' + subs.length + ' subreddits · ' + accountAge + ' days old · claude-opus-4-6';
+    const userMeta = u.totalComments + ' comments · ' + u.subs.length + ' subreddits · ' + u.accountAge + ' days old · claude-opus-4-6';
     showResult('u/' + username, userMeta, result.content[0].text);
     saveAnalysis('reddit_user', username, 'u/' + username, userMeta, result.content[0].text).then(loadHistory);
 
@@ -712,7 +765,33 @@ async function analyzeUser() {
   }
 }
 
+async function downloadUserRawData() {
+  const username = normalizeRedditIdentifier(userInput.value, 'user');
+  if (!username) { setStatus('Please enter a Reddit username.', true); return; }
+
+  downloadUserBtn.disabled = true;
+  try {
+    const u = await fetchUserData(username);
+    const fileText =
+      'User: u/' + username + '\n' +
+      'Account age: ' + u.accountAge + ' days\n' +
+      'Comment karma: ' + u.commentKarma + '\n' +
+      'Post karma: ' + u.postKarma + '\n' +
+      'Comments fetched: ' + u.totalComments + (u.trimmed ? ' (trimmed to fit)' : '') + '\n' +
+      'Unique subreddits: ' + u.subs.join(', ') + '\n\n' +
+      'RECENT POSTS:\n' + (u.submittedText || '(none)') + '\n\n' +
+      'RECENT COMMENTS:\n' + u.commentText;
+    downloadTextFile('u-' + slugify(username) + '-raw.txt', fileText);
+    clearStatus();
+  } catch (e) {
+    setStatus('Error: ' + e.message, true);
+  } finally {
+    downloadUserBtn.disabled = false;
+  }
+}
+
 userBtn.addEventListener('click', analyzeUser);
+downloadUserBtn.addEventListener('click', downloadUserRawData);
 userInput.addEventListener('keydown', function(e) {
   if (e.key === 'Enter') analyzeUser();
 });

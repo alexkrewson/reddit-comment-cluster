@@ -12,8 +12,9 @@ after each step so progress survives a crash. See the approved plan for full rat
 - [x] 5. History titles: YouTube oEmbed title fetch + fallback truncation for any
       unresolvable identifier
 - [x] 6. Input normalization for Reddit username/subreddit fields
-- [ ] 7. Raw Data Download buttons (Reddit post, Reddit user, subreddit vibe check) —
-      client-side fetch+clean, no Claude call, no token cost
+- [~] 7. Raw Data Download buttons — Reddit post + Reddit user done (client-side
+      fetch+clean, no Claude call, no token cost); subreddit vibe check button lands
+      with step 8 below
 - [ ] 8. Subreddit Vibe Check new tool (Worker route + Claude prompt + history + raw
       download)
 - [ ] 9a. Supabase migration SQL for token credits (profiles table, RPCs) — file only
