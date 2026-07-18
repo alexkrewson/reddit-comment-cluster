@@ -45,8 +45,12 @@ after each step so progress survives a crash. See the approved plan for full rat
 - [x] 9a. Supabase migration SQL for token credits (profiles table, RPCs) — file only,
       `supabase-credits-migration.sql`, mirrors Argument Mapper's schema/RPC names
       exactly for consistency; not yet run against the live DB
-- [ ] 9b. Worker: credit check/deduction on /claude, /create-checkout-session,
-      /stripe-webhook routes
+- [x] 9b. Worker: credit check/deduction on /claude, /create-checkout-session,
+      /stripe-webhook routes. **Flag before going live**: the per-token pricing
+      constants are copied from Argument Mapper's Sonnet-4.5 rates as a
+      placeholder — this app calls claude-opus-4-6, a different and pricier
+      model, so those constants need updating to real Opus pricing or the app
+      will undercharge relative to actual Anthropic cost.
 - [ ] 9c. Frontend: credit balance display, Buy Credits modal, payment redirect handling,
       402/out-of-credits UX
 - [ ] 10. Update README/HANDOFF/DEPLOY docs for new architecture + Stripe secrets +
