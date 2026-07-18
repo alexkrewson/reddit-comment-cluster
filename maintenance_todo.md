@@ -26,4 +26,7 @@ after each step so progress survives a crash. See the approved plan for full rat
 - [ ] 11. Pause for manual testing — round 1 (everything except payments)
 - [ ] 12. Pause for manual testing — round 2 (payments, local/wrangler dev only)
 - [ ] 13. Checkpoint before going live: Supabase migration on live DB, wrangler deploy,
-      live Stripe product/webhook, git push — all require explicit go-ahead
+      live Stripe product/webhook — still require explicit go-ahead
+      - [x] Round-1 commits (steps 1-8) pushed to origin/main at user's request so the
+            rebrand/tabs/restyle/normalization/raw-downloads are live on GitHub Pages.
+            Subreddit Vibe Check won't work live yet — needs the updated Worker deployed.
