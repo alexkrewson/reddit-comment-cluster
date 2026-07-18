@@ -24,6 +24,16 @@ after each step so progress survives a crash. See the approved plan for full rat
       with an About overlay (collapsible nav + scrollspy covering each tool, raw
       downloads, history, privacy). Advanced section omitted — no genuine density/
       sound/debug settings exist yet to put there.
+- [x] 3e. Replaced the binary Dark/Light toggle with the full 8-preset library
+      (classic/ocean/sunset/forest/dusk/night/midnight/ember) from the updated
+      css-best-practices.md. Each preset bundles mode (dark/light) + a single
+      --accent (using preset "a" — Analyzer has no two-sided entity structure to
+      use "b" for). --accent-glow switched to color-mix() so the focus ring
+      follows whichever preset is active. Note: only Ember's contrast against
+      --text-on-accent was independently validated in the doc; the other 7
+      presets' accent-vs-text contrast wasn't recomputed, just assumed similar
+      given comparable muted/mid-tone lightness — flagging this as unverified
+      rather than claiming it's been checked.
 - [x] 4. Tab structure: Analyze (default, inputs+results) / History tabs
 - [x] 5. History titles: YouTube oEmbed title fetch + fallback truncation for any
       unresolvable identifier

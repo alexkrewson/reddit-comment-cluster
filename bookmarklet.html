@@ -25,7 +25,7 @@
     --accent-teal: #3d8c7a;
     --accent-teal-border: #255c50;
     --accent: var(--accent-teal);
-    --accent-glow: rgba(61, 140, 122, 0.18);
+    --accent-glow: color-mix(in srgb, var(--accent) 18%, transparent);
 
     --success: #22c55e; --success-dark: #16a34a; --success-bg: #f0fdf422; --success-text: #4ade80;
     --danger:  #ef4444; --danger-dark:  #dc2626;  --danger-bg:  #fef2f222; --danger-text:  #f87171;
@@ -421,13 +421,33 @@
   .about-scroll p { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6; margin: 0.5em 0; }
 </style>
 <script>
-  // Set the explicit theme attribute before first paint to avoid a flash of the
-  // wrong theme (dark-first per shared best practices; light is an explicit,
-  // persistent user choice — never inferred from prefers-color-scheme).
+  // Full 8-theme preset library, shared verbatim across every app in
+  // ~/apps (see ~/apps/shared/css-best-practices.md — Multi-theme color
+  // system). Each preset bundles a dark/light mode with an accent pair;
+  // Analyzer has no two-sided/multi-entity structure, so only "a" is used
+  // as the single functional --accent — "b" is kept for the swatch picker
+  // so the picker itself matches every other app's.
+  var PRESETS = {
+    classic:  { label: 'Classic',  dark: false, a: '#6a8ca8', b: '#7a9c78' },
+    ocean:    { label: 'Ocean',    dark: false, a: '#5a7898', b: '#b87c68' },
+    sunset:   { label: 'Sunset',   dark: false, a: '#c49a6c', b: '#9478a8' },
+    forest:   { label: 'Forest',   dark: false, a: '#5a8460', b: '#9c6450' },
+    dusk:     { label: 'Dusk',     dark: false, a: '#8878a8', b: '#ac748c' },
+    night:    { label: 'Night',    dark: true,  a: '#6a8eaa', b: '#5a8a7a' },
+    midnight: { label: 'Midnight', dark: true,  a: '#7868a0', b: '#9c6878' },
+    ember:    { label: 'Ember',    dark: true,  a: '#b87040', b: '#3d8c7a' }
+  };
+  var DEFAULT_PRESET_KEY = 'ember'; // folder-wide default per shared best practices
+
+  // Set the explicit theme + accent before first paint to avoid a flash of
+  // the wrong theme (dark-first per shared best practices; light — and any
+  // non-default preset — is an explicit, persistent user choice, never
+  // inferred from prefers-color-scheme).
   (function() {
-    if (localStorage.getItem('analyzer-theme') === 'light') {
-      document.documentElement.setAttribute('data-theme', 'light');
-    }
+    var key = localStorage.getItem('analyzer-preset') || DEFAULT_PRESET_KEY;
+    var preset = PRESETS[key] || PRESETS[DEFAULT_PRESET_KEY];
+    if (!preset.dark) document.documentElement.setAttribute('data-theme', 'light');
+    document.documentElement.style.setProperty('--accent', preset.a);
   })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -462,22 +482,7 @@
       <button class="settings-section-toggle" data-section="themes">
         Themes <span class="settings-section-chevron">▾</span>
       </button>
-      <div class="settings-section-body" data-section-body="themes" style="display:none">
-        <button class="theme-option" data-theme-choice="dark" id="theme-option-dark">
-          <span class="theme-swatches">
-            <span class="theme-swatch" style="background:#1e1508"></span>
-            <span class="theme-swatch" style="background:#3d8c7a"></span>
-          </span>
-          Dark (Ember)
-        </button>
-        <button class="theme-option" data-theme-choice="light" id="theme-option-light">
-          <span class="theme-swatches">
-            <span class="theme-swatch" style="background:#f8fafc"></span>
-            <span class="theme-swatch" style="background:#3b82f6"></span>
-          </span>
-          Light
-        </button>
-      </div>
+      <div class="settings-section-body" data-section-body="themes" style="display:none" id="theme-options"></div>
 
       <button class="settings-section-toggle" id="about-open-btn">About</button>
       <!-- About opens the overlay below directly rather than expanding inline. -->
@@ -624,21 +629,35 @@ const authLoggedOut = document.getElementById('auth-logged-out');
 const authSentNote = document.getElementById('auth-sent-note');
 const authLoggedInNote = document.getElementById('auth-logged-in-note');
 
-// ---- Theme (explicit persistent toggle, not prefers-color-scheme — see
-// ~/apps/shared/css-best-practices.md). Appearance settings persist to
-// localStorage immediately, independent of sign-in state. ----
-function applyTheme(theme) {
-  if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
-  else document.documentElement.removeAttribute('data-theme');
-  document.getElementById('theme-option-dark').classList.toggle('theme-option--active', theme !== 'light');
-  document.getElementById('theme-option-light').classList.toggle('theme-option--active', theme === 'light');
+// ---- Theme (explicit persistent choice, not prefers-color-scheme — see
+// ~/apps/shared/css-best-practices.md Multi-theme color system). PRESETS and
+// DEFAULT_PRESET_KEY come from the pre-paint script in <head>. Appearance
+// settings persist to localStorage immediately, independent of sign-in state.
+const themeOptionsEl = document.getElementById('theme-options');
+themeOptionsEl.innerHTML = Object.keys(PRESETS).map(function(key) {
+  var p = PRESETS[key];
+  return '<button class="theme-option" data-preset-key="' + key + '">' +
+    '<span class="theme-swatches">' +
+      '<span class="theme-swatch" style="background:' + p.a + '"></span>' +
+      '<span class="theme-swatch" style="background:' + p.b + '"></span>' +
+    '</span>' + escapeHtml(p.label) + '</button>';
+}).join('');
+
+function applyPreset(key) {
+  const preset = PRESETS[key] || PRESETS[DEFAULT_PRESET_KEY];
+  if (preset.dark) document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', 'light');
+  document.documentElement.style.setProperty('--accent', preset.a);
+  document.querySelectorAll('.theme-option').forEach(function(btn) {
+    btn.classList.toggle('theme-option--active', btn.dataset.presetKey === key);
+  });
 }
-applyTheme(localStorage.getItem('analyzer-theme') === 'light' ? 'light' : 'dark');
-document.querySelectorAll('.theme-option').forEach(function(opt) {
+applyPreset(localStorage.getItem('analyzer-preset') || DEFAULT_PRESET_KEY);
+themeOptionsEl.querySelectorAll('.theme-option').forEach(function(opt) {
   opt.addEventListener('click', function() {
-    const next = opt.dataset.themeChoice;
-    localStorage.setItem('analyzer-theme', next);
-    applyTheme(next);
+    const key = opt.dataset.presetKey;
+    localStorage.setItem('analyzer-preset', key);
+    applyPreset(key);
   });
 });
 
