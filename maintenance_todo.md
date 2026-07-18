@@ -54,8 +54,9 @@ after each step so progress survives a crash. See the approved plan for full rat
 - [x] 9c. Frontend: credit balance display (Settings → Account), Buy Credits modal
       (50c/$2/$5 packs), ?payment=success|cancelled redirect handling, 402/
       out-of-credits UX that opens the Buy Credits modal on all 4 AI call sites
-- [ ] 10. Update README/HANDOFF/DEPLOY docs for new architecture + Stripe secrets +
-      one-time Supabase SQL step
+- [x] 10. Updated README/HANDOFF/DEPLOY docs for new architecture + Stripe secrets +
+      one-time Supabase SQL step. Also corrected README's stale description of the
+      old pre-OAuth/pre-Supabase architecture while touching the file anyway.
 - [ ] 11. Pause for manual testing — round 1 (everything except payments)
 - [ ] 12. Pause for manual testing — round 2 (payments, local/wrangler dev only)
 - [ ] 13. Checkpoint before going live: Supabase migration on live DB, wrangler deploy,

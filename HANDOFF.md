@@ -4,7 +4,7 @@
 
 ## What this app is
 
-A single-page web app that analyzes Reddit posts, Reddit users, subreddits, and YouTube transcripts using Claude. Lives at:
+A single-page web app that analyzes Reddit posts, Reddit users, subreddits (Vibe Check), and YouTube transcripts using Claude, with tabbed Analyze/History UI, a consolidated Settings menu (Account/Themes/About/Help), and token-based credits for AI analysis (raw data downloads stay free). Lives at:
 
 **https://alexkrewson.github.io/reddit-comment-cluster/bookmarklet.html**
 
@@ -17,10 +17,12 @@ The only file that matters for the frontend is `bookmarklet.html` in the root of
 | Layer | What | Where |
 |---|---|---|
 | Frontend | `bookmarklet.html` | GitHub Pages (static) |
-| Claude proxy | `reddit-proxy-worker.js` | Cloudflare Worker (`reddit-proxy.alex-krewson.workers.dev`) |
+| Reddit/Claude/Stripe proxy | `reddit-proxy-worker.js` | Cloudflare Worker (`reddit-proxy.alex-krewson.workers.dev`) |
 | Auth + DB | Supabase project | `xjcdicxchvmujjfnpbia.supabase.co` |
 
-**Why the Cloudflare Worker?** The Claude API key can't live in client-side JS. The worker verifies the user's Supabase JWT before forwarding requests to Claude. It also proxies Reddit API calls (which require OAuth credentials) and resolves Reddit share/mobile links.
+**Why the Cloudflare Worker?** The Claude API key, Reddit OAuth credentials, and Stripe secret key can't live in client-side JS. The worker verifies the user's Supabase JWT before forwarding requests to Claude (and checks/deducts token credits), proxies Reddit API calls, resolves Reddit share/mobile links, and handles Stripe checkout-session creation + the payment webhook.
+
+**Architecture decision (2026-07-18):** rather than adding Supabase Edge Functions (Deno) as a second backend runtime just for billing — which is how the sibling app Argument Mapper does it — billing was folded into this same Worker as three new routes (`/create-checkout-session`, `/stripe-webhook`, plus credit-check/deduction on `/claude`), calling the Stripe REST API directly with `fetch` and verifying webhook signatures via the Web Crypto API. Keeps one backend instead of two, reusing the existing JWT-verification helper.
 
 ---
 
@@ -70,6 +72,38 @@ create policy "insert own analyses"
 
 ---
 
+## Token-based credits (added July 2026)
+
+AI analysis (post, user, subreddit vibe check, YouTube transcript analysis) costs
+credits; raw data downloads never call Claude and stay free. Mirrors Argument Mapper's
+credit system for a consistent balance/top-up/deduction experience.
+
+- **Migration:** `supabase-credits-migration.sql` — run once in the SQL Editor. Creates
+  `profiles` (per-user `credits_cents`, defaults to 50¢ starter credits via a signup
+  trigger), RLS scoped to `auth.uid()`, and `add_credits`/`deduct_credits` RPCs.
+- **Worker routes:**
+  - `/claude` — checks `profiles.credits_cents` before forwarding to Anthropic (402
+    `out_of_credits` if empty), deducts the real cost afterward from
+    `usage.input_tokens`/`usage.output_tokens`, returns the new balance via an
+    `X-Credits-Remaining` response header.
+  - `/create-checkout-session` — JWT-verified, creates a Stripe Checkout session via a
+    direct REST call (50¢/$2/$5 packs from the frontend, 50¢ minimum enforced
+    server-side).
+  - `/stripe-webhook` — verifies `Stripe-Signature` manually (HMAC-SHA256 via Web
+    Crypto, since there's no Stripe SDK in a Worker), calls `add_credits` on
+    `checkout.session.completed`.
+- **Frontend:** balance shown in Settings → Account, refreshed from
+  `X-Credits-Remaining` after every analysis; Buy Credits modal opens Stripe Checkout
+  in a new tab; a 402 response opens the same modal instead of a generic error.
+
+⚠️ **Unresolved before going live:** `INPUT_CENTS_PER_TOKEN`/`OUTPUT_CENTS_PER_TOKEN` in
+`reddit-proxy-worker.js` are placeholders copied from Argument Mapper's Claude Sonnet
+4.5 rates ($3/$15 per MTok × 2 markup). This app calls `claude-opus-4-6`, a different
+and pricier model — substitute real Opus pricing before charging real users, or every
+analysis undercharges relative to the actual Anthropic bill.
+
+---
+
 ## Reddit API
 
 The worker uses Reddit OAuth (`client_credentials` grant) via `oauth.reddit.com`. Credentials are stored as Cloudflare Worker secrets (`REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`).
@@ -104,6 +138,20 @@ See `DEPLOY.md`. Requires Node 20 and a Cloudflare API token (not `wrangler logi
 | Worker URL | `https://reddit-proxy.alex-krewson.workers.dev` |
 | GitHub repo | `alexkrewson/reddit-comment-cluster` |
 
+### Cloudflare Worker secrets (set via `wrangler secret put <NAME> --name reddit-proxy`)
+
+| Secret | Purpose |
+|---|---|
+| `REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET` | Reddit OAuth (existing) |
+| `CLAUDE_API_KEY` | Anthropic API (existing) |
+| `SUPABASE_SERVICE_ROLE_KEY` | New — lets the Worker read/write `profiles` bypassing RLS |
+| `STRIPE_SECRET_KEY` | New — Stripe REST API calls (checkout session creation) |
+| `STRIPE_WEBHOOK_SECRET` | New — verifies the `Stripe-Signature` header on `/stripe-webhook` |
+
+Stripe webhook endpoint should point to
+`https://reddit-proxy.alex-krewson.workers.dev/stripe-webhook`, subscribed to
+`checkout.session.completed`.
+
 ---
 
 ## Possible future work
@@ -112,3 +160,8 @@ See `DEPLOY.md`. Requires Node 20 and a Cloudflare API token (not `wrangler logi
 - Pagination or search for history (currently shows last 30)
 - Display YouTube transcripts in the transcript box (with timestamps) when loaded from history, instead of plain text in the output panel
 - Deduplicate history (don't save a new entry if the same URL was analyzed recently)
+- **Verify/replace the placeholder claude-opus-4-6 pricing constants** in
+  `reddit-proxy-worker.js` before real users can spend real money on credits (see
+  "Token-based credits" above)
+- Independently verify WCAG contrast for the 7 non-Ember theme presets (only Ember's
+  was validated in `~/apps/shared/css-best-practices.md`)
