@@ -77,6 +77,62 @@
     flex-shrink: 0;
   }
   .icon-btn:hover { color: var(--text-primary); border-color: var(--border-strong); }
+  /* --- Settings menu (consolidated Account/Themes/About/Help, per shared recipe) --- */
+  .settings-wrap { position: relative; }
+  .settings-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 260px;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+    padding: 0.5rem;
+    z-index: 70;
+  }
+  .settings-section-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: 44px;
+    padding: 0.35rem 0.5rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-tertiary);
+  }
+  .settings-section-toggle:hover { color: var(--text-secondary); }
+  .settings-section-chevron { font-size: 0.6rem; transition: transform 0.15s ease; }
+  .settings-section-chevron--open { transform: rotate(180deg); }
+  .settings-section-body { padding: 0.25rem 0.5rem 0.6rem; }
+  .settings-section-body + .settings-section-toggle { border-top: 1px solid var(--border); margin-top: 0.25rem; padding-top: 0.6rem; }
+  .settings-user-email { font-size: 0.75rem; color: var(--text-secondary); padding: 0.2rem 0; word-break: break-all; }
+  .theme-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    min-height: 44px;
+    padding: 0.35rem 0.5rem;
+    border: none;
+    border-radius: 6px;
+    background: none;
+    cursor: pointer;
+    text-align: left;
+    color: var(--text-primary);
+    font-size: 0.82rem;
+  }
+  .theme-option:hover { background: var(--bg-surface); }
+  .theme-option--active { background: var(--bg-surface); font-weight: 600; }
+  .theme-swatches { display: flex; gap: 3px; flex-shrink: 0; }
+  .theme-swatch { width: 13px; height: 13px; border-radius: 50%; border: 1.5px solid rgba(0,0,0,0.3); }
+  .help-text { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5; margin: 0; }
   .input-row {
     display: flex;
     gap: 8px;
@@ -297,6 +353,72 @@
   }
   .history-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--text-primary); }
   .history-date { color: var(--text-tertiary); font-size: 0.7rem; white-space: nowrap; flex-shrink: 0; }
+  /* --- About overlay (opened from Settings → About, not a top-level tab) --- */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1rem;
+  }
+  .about-card {
+    position: relative;
+    background: var(--bg-raised);
+    color: var(--text-primary);
+    border-radius: 10px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    max-width: 720px;
+    width: 100%;
+    height: 80vh;
+    overflow: hidden;
+  }
+  #about-close-btn { position: absolute; top: 8px; right: 8px; z-index: 1; }
+  .about-page { display: flex; align-items: flex-start; height: 100%; overflow: hidden; }
+  .about-nav {
+    flex-shrink: 0;
+    width: 200px;
+    height: 100%;
+    overflow-y: auto;
+    border-right: 1px solid var(--border);
+    padding: 1rem 0;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .about-nav { transition: width 0.2s ease; }
+  }
+  .about-nav--collapsed { width: 32px; }
+  .about-nav--collapsed .about-nav-link { display: none; }
+  .about-nav-link {
+    display: block;
+    width: 100%;
+    min-height: 44px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    padding: 0.3rem 0.75rem;
+    text-align: left;
+  }
+  .about-nav-link--active { color: var(--text-primary); font-weight: 600; }
+  .about-nav-collapse-btn {
+    display: block;
+    width: 100%;
+    min-height: 44px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-tertiary);
+    padding: 0.3rem 0.75rem;
+    text-align: left;
+    font-size: 0.9rem;
+  }
+  .about-scroll { flex: 1; height: 100%; overflow-y: auto; padding: 1.5rem 2rem; }
+  .about-scroll h2 { font-size: 1rem; color: var(--text-primary); margin: 1.5em 0 0.5em; }
+  .about-scroll h2:first-child { margin-top: 0; }
+  .about-scroll p { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6; margin: 0.5em 0; }
 </style>
 <script>
   // Set the explicit theme attribute before first paint to avoid a flash of the
@@ -318,17 +440,112 @@
     <h1>Analyzer</h1>
     <p class="subtitle">Paste a Reddit post URL to cluster comment points, a username to profile a user, a subreddit to check its vibe, or a YouTube URL to fetch and analyze a transcript.</p>
   </div>
-  <button id="theme-toggle" class="icon-btn" title="Switch to light mode">☀️</button>
+  <div class="settings-wrap">
+    <button id="settings-btn" class="icon-btn" title="Settings" aria-label="Settings">⚙️</button>
+    <div id="settings-dropdown" class="settings-dropdown" style="display:none">
+
+      <button class="settings-section-toggle" data-section="account">
+        Account <span class="settings-section-chevron">▾</span>
+      </button>
+      <div class="settings-section-body" data-section-body="account" style="display:none">
+        <div id="auth-logged-out" class="input-row" style="display:none; margin-bottom:0;">
+          <input id="auth-email" type="email" placeholder="Email address" autocomplete="email" spellcheck="false">
+          <button id="auth-send-btn" class="primary">Send magic link</button>
+        </div>
+        <p id="auth-sent-note" class="help-text" style="display:none;">Magic link sent — check your email.</p>
+        <div id="auth-logged-in-note" style="display:none;">
+          <p id="auth-email-display" class="settings-user-email"></p>
+          <button id="auth-signout-btn" class="secondary">Sign out</button>
+        </div>
+      </div>
+
+      <button class="settings-section-toggle" data-section="themes">
+        Themes <span class="settings-section-chevron">▾</span>
+      </button>
+      <div class="settings-section-body" data-section-body="themes" style="display:none">
+        <button class="theme-option" data-theme-choice="dark" id="theme-option-dark">
+          <span class="theme-swatches">
+            <span class="theme-swatch" style="background:#1e1508"></span>
+            <span class="theme-swatch" style="background:#3d8c7a"></span>
+          </span>
+          Dark (Ember)
+        </button>
+        <button class="theme-option" data-theme-choice="light" id="theme-option-light">
+          <span class="theme-swatches">
+            <span class="theme-swatch" style="background:#f8fafc"></span>
+            <span class="theme-swatch" style="background:#3b82f6"></span>
+          </span>
+          Light
+        </button>
+      </div>
+
+      <button class="settings-section-toggle" id="about-open-btn">About</button>
+      <!-- About opens the overlay below directly rather than expanding inline. -->
+
+
+      <button class="settings-section-toggle" data-section="help">
+        Help <span class="settings-section-chevron">▾</span>
+      </button>
+      <div class="settings-section-body" data-section-body="help" style="display:none">
+        <p class="help-text">Sign in above first, then paste a Reddit post URL, a username, or a subreddit, or a YouTube URL for a transcript. See About for details on each tool.</p>
+      </div>
+
+    </div>
+  </div>
 </div>
 
-<div id="auth-logged-out" class="input-row" style="display:none">
-  <input id="auth-email" type="email" placeholder="Email address" autocomplete="email" spellcheck="false">
-  <button id="auth-send-btn" class="primary">Send magic link</button>
+<div id="about-overlay" class="modal-backdrop" style="display:none">
+  <div class="about-card">
+    <button id="about-close-btn" class="icon-btn" title="Close" aria-label="Close">✕</button>
+    <div class="about-page">
+      <nav class="about-nav" id="about-nav">
+        <button class="about-nav-collapse-btn" id="about-nav-collapse-btn" title="Collapse">«</button>
+        <button class="about-nav-link" data-about-section="about-overview">Overview</button>
+        <button class="about-nav-link" data-about-section="about-post">Post Analysis</button>
+        <button class="about-nav-link" data-about-section="about-user">User Analysis</button>
+        <button class="about-nav-link" data-about-section="about-vibe">Subreddit Vibe Check</button>
+        <button class="about-nav-link" data-about-section="about-youtube">YouTube Transcripts</button>
+        <button class="about-nav-link" data-about-section="about-raw">Raw Data Downloads</button>
+        <button class="about-nav-link" data-about-section="about-history">History</button>
+        <button class="about-nav-link" data-about-section="about-privacy">Privacy &amp; Data</button>
+      </nav>
+      <div class="about-scroll" id="about-scroll">
+        <section id="about-overview">
+          <h2>Overview</h2>
+          <p>Analyzer uses Claude to make sense of Reddit threads, Reddit users, subreddit culture, and YouTube transcripts. Sign in with a magic link (top right, under Account) to unlock every tool — AI analysis, raw data downloads, and your history are all tied to your account.</p>
+        </section>
+        <section id="about-post">
+          <h2>Post Analysis</h2>
+          <p>Paste a Reddit post URL. Analyzer fetches every comment, strips deleted/removed/modteam noise and URLs, sorts by score, and asks Claude to identify the distinct points and arguments being made — not just summarize comment-by-comment — clustered into themed groups with their share of the discussion.</p>
+        </section>
+        <section id="about-user">
+          <h2>User Analysis</h2>
+          <p>Enter a Reddit username (any format — <code>u/name</code>, a profile URL, or just the name). Analyzer fetches account metadata plus recent comments and posts, then asks Claude for a clinical read on bot likelihood, engagement value, personality, and thinking style — with direct quotes where relevant.</p>
+        </section>
+        <section id="about-vibe">
+          <h2>Subreddit Vibe Check</h2>
+          <p>Enter a subreddit (any format — <code>r/name</code>, a URL, or just the name). Analyzer samples the month's top posts plus comments from the highest-scoring ones, then asks Claude to characterize tone, typical topics, how people engage with each other, what performs well, and any norms or red flags — so you can "know the room" before posting.</p>
+        </section>
+        <section id="about-youtube">
+          <h2>YouTube Transcripts</h2>
+          <p>Paste a YouTube URL to fetch its transcript (with timestamps) and real video title. From there you can copy the raw transcript or send it to Claude for a summary, key points, and notable quotes.</p>
+        </section>
+        <section id="about-raw">
+          <h2>Raw Data Downloads</h2>
+          <p>Every Reddit tool (post, user, subreddit) has a "Download Raw Data" button next to its AI button. It runs the same fetch-and-clean pipeline but skips Claude entirely, handing you a plain-text file to paste into any AI of your choice — free, no tokens spent (though you do need to be signed in to reach the tools at all).</p>
+        </section>
+        <section id="about-history">
+          <h2>History</h2>
+          <p>Every AI analysis you run while signed in is saved to the History tab with a human-readable title (post title, <code>u/username</code>, <code>r/subreddit</code>, or the video title). Click any entry to reload its result instantly.</p>
+        </section>
+        <section id="about-privacy">
+          <h2>Privacy &amp; Data</h2>
+          <p>Reddit and YouTube data is fetched through a Cloudflare Worker that also proxies Claude calls — your Anthropic usage never touches the browser directly. Signing in uses Supabase magic-link auth; saved history is private to your account via row-level security.</p>
+        </section>
+      </div>
+    </div>
+  </div>
 </div>
-<p id="auth-sent-note" style="display:none; font-size:0.8rem; color:var(--text-secondary); margin-bottom:16px;">Magic link sent — check your email.</p>
-<p id="auth-logged-in-note" style="display:none; font-size:0.8rem; color:var(--text-secondary); margin-bottom:16px;">
-  <span id="auth-email-display"></span> · <button id="auth-signout-btn" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:0.8rem;padding:0;">Sign out</button>
-</p>
 
 <div id="app-content" style="display:none">
 
@@ -408,20 +625,95 @@ const authSentNote = document.getElementById('auth-sent-note');
 const authLoggedInNote = document.getElementById('auth-logged-in-note');
 
 // ---- Theme (explicit persistent toggle, not prefers-color-scheme — see
-// ~/apps/shared/css-best-practices.md) ----
-const themeToggle = document.getElementById('theme-toggle');
+// ~/apps/shared/css-best-practices.md). Appearance settings persist to
+// localStorage immediately, independent of sign-in state. ----
 function applyTheme(theme) {
   if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
   else document.documentElement.removeAttribute('data-theme');
-  themeToggle.textContent = theme === 'light' ? '🌙' : '☀️';
-  themeToggle.title = theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode';
+  document.getElementById('theme-option-dark').classList.toggle('theme-option--active', theme !== 'light');
+  document.getElementById('theme-option-light').classList.toggle('theme-option--active', theme === 'light');
 }
 applyTheme(localStorage.getItem('analyzer-theme') === 'light' ? 'light' : 'dark');
-themeToggle.addEventListener('click', function() {
-  const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
-  localStorage.setItem('analyzer-theme', next);
-  applyTheme(next);
+document.querySelectorAll('.theme-option').forEach(function(opt) {
+  opt.addEventListener('click', function() {
+    const next = opt.dataset.themeChoice;
+    localStorage.setItem('analyzer-theme', next);
+    applyTheme(next);
+  });
 });
+
+// ---- Settings menu (consolidated Account/Themes/About/Help — one entry point
+// rather than separate header icons, per shared best-practices settings-menu
+// recipe). Accordion sections closed by default; dismiss on outside click and
+// touchstart so it also works on mobile. ----
+const settingsBtn = document.getElementById('settings-btn');
+const settingsDropdown = document.getElementById('settings-dropdown');
+
+function closeSettingsDropdown() {
+  settingsDropdown.style.display = 'none';
+}
+settingsBtn.addEventListener('click', function(e) {
+  e.stopPropagation();
+  settingsDropdown.style.display = settingsDropdown.style.display === 'none' ? 'block' : 'none';
+});
+['click', 'touchstart'].forEach(function(evt) {
+  document.addEventListener(evt, function(e) {
+    if (settingsDropdown.style.display !== 'none' && !settingsDropdown.contains(e.target) && e.target !== settingsBtn) {
+      closeSettingsDropdown();
+    }
+  });
+});
+
+document.querySelectorAll('.settings-section-toggle[data-section]').forEach(function(toggle) {
+  const body = document.querySelector('.settings-section-body[data-section-body="' + toggle.dataset.section + '"]');
+  const chevron = toggle.querySelector('.settings-section-chevron');
+  toggle.addEventListener('click', function() {
+    const isOpen = body.style.display !== 'none';
+    body.style.display = isOpen ? 'none' : 'block';
+    if (chevron) chevron.classList.toggle('settings-section-chevron--open', !isOpen);
+  });
+});
+
+// ---- About overlay (opened from Settings → About, not a competing tab) ----
+const aboutOverlay = document.getElementById('about-overlay');
+const aboutNav = document.getElementById('about-nav');
+const aboutScroll = document.getElementById('about-scroll');
+
+document.getElementById('about-open-btn').addEventListener('click', function() {
+  closeSettingsDropdown();
+  aboutOverlay.style.display = 'flex';
+});
+document.getElementById('about-close-btn').addEventListener('click', function() {
+  aboutOverlay.style.display = 'none';
+});
+aboutOverlay.addEventListener('click', function(e) {
+  if (e.target === aboutOverlay) aboutOverlay.style.display = 'none';
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && aboutOverlay.style.display !== 'none') aboutOverlay.style.display = 'none';
+});
+document.getElementById('about-nav-collapse-btn').addEventListener('click', function() {
+  aboutNav.classList.toggle('about-nav--collapsed');
+  this.textContent = aboutNav.classList.contains('about-nav--collapsed') ? '»' : '«';
+});
+
+const aboutNavLinks = Array.from(document.querySelectorAll('.about-nav-link'));
+aboutNavLinks.forEach(function(link) {
+  link.addEventListener('click', function() {
+    document.getElementById(link.dataset.aboutSection).scrollIntoView({ block: 'start' });
+  });
+});
+// Scrollspy: highlight whichever About section is currently in view.
+const aboutObserver = new IntersectionObserver(function(entries) {
+  entries.forEach(function(entry) {
+    if (!entry.isIntersecting) return;
+    const link = aboutNavLinks.find(function(l) { return l.dataset.aboutSection === entry.target.id; });
+    if (!link) return;
+    aboutNavLinks.forEach(function(l) { l.classList.remove('about-nav-link--active'); });
+    link.classList.add('about-nav-link--active');
+  });
+}, { root: aboutScroll, threshold: 0.5 });
+document.querySelectorAll('.about-scroll > section').forEach(function(section) { aboutObserver.observe(section); });
 
 // ---- Tabs ----
 function activateTab(name) {
