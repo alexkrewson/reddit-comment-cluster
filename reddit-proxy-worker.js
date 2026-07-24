@@ -1,5 +1,9 @@
-const SUPABASE_URL = 'https://xjcdicxchvmujjfnpbia.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_YZkXT-j_gaUGKhco7ENJ1Q_ydVit7Nf';
+// Old (pre-consolidation) project, kept for reference until cutover is verified:
+// const SUPABASE_URL = 'https://xjcdicxchvmujjfnpbia.supabase.co';
+// const SUPABASE_ANON_KEY = 'sb_publishable_YZkXT-j_gaUGKhco7ENJ1Q_ydVit7Nf';
+const SUPABASE_URL = 'https://ycuuxnscbxiibsnefgef.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_oVIOiEk8gNhTfczh2W86bA_f1NnEsCF';
+const SUPABASE_SCHEMA = 'comment_cluster';
 
 // Token-credit pricing, mirrored from argument_mapper's claude-proxy (2x markup
 // over Anthropic's list price).
@@ -59,6 +63,8 @@ async function getOrCreateProfile(userId, env) {
     'apikey': env.SUPABASE_SERVICE_ROLE_KEY,
     'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
     'Content-Type': 'application/json',
+    'Accept-Profile': SUPABASE_SCHEMA,
+    'Content-Profile': SUPABASE_SCHEMA,
   };
   const selectResp = await fetch(
     `${SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}&select=credits_cents`,
@@ -83,6 +89,7 @@ async function callCreditsRpc(fn, userId, amount, env) {
       'apikey': env.SUPABASE_SERVICE_ROLE_KEY,
       'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
       'Content-Type': 'application/json',
+      'Content-Profile': SUPABASE_SCHEMA,
     },
     body: JSON.stringify({ p_user_id: userId, p_amount: amount }),
   });

@@ -677,12 +677,16 @@
 
 <script>
 // ---- Supabase auth ----
-const SUPABASE_URL = 'https://xjcdicxchvmujjfnpbia.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_YZkXT-j_gaUGKhco7ENJ1Q_ydVit7Nf';
+// Old (pre-consolidation) project, kept for reference until cutover is verified:
+// const SUPABASE_URL = 'https://xjcdicxchvmujjfnpbia.supabase.co';
+// const SUPABASE_ANON_KEY = 'sb_publishable_YZkXT-j_gaUGKhco7ENJ1Q_ydVit7Nf';
+const SUPABASE_URL = 'https://ycuuxnscbxiibsnefgef.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_oVIOiEk8gNhTfczh2W86bA_f1NnEsCF';
 const WORKER_URL = 'https://reddit-proxy.alex-krewson.workers.dev';
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: { flowType: 'implicit' }
+  auth: { flowType: 'implicit' },
+  db: { schema: 'comment_cluster' },
 });
 
 const appContent = document.getElementById('app-content');
