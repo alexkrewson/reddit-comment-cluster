@@ -6,15 +6,10 @@ const SUPABASE_ANON_KEY = 'sb_publishable_oVIOiEk8gNhTfczh2W86bA_f1NnEsCF';
 const SUPABASE_SCHEMA = 'comment_cluster';
 
 // Token-credit pricing, mirrored from argument_mapper's claude-proxy (2x markup
-// over Anthropic's list price).
-// !! PLACEHOLDER — these are Claude Sonnet 4.5's per-token rates ($3 / $15 per
-// MTok). This app calls `claude-opus-4-6`, a different (materially more
-// expensive) model, and its actual per-token cost hasn't been substituted in
-// here. Using Sonnet's rates for Opus-tier usage would undercharge relative to
-// the real Anthropic bill — verify and update these two constants against
-// current claude-opus-4-6 pricing before this goes live.
-const INPUT_CENTS_PER_TOKEN = 0.000_6;  // $3 / MTok × 2 (Sonnet 4.5 rate — see note above)
-const OUTPUT_CENTS_PER_TOKEN = 0.003_0; // $15 / MTok × 2 (Sonnet 4.5 rate — see note above)
+// over Anthropic's list price). Rates are for claude-opus-4-6 ($5 / $25 per
+// MTok), the model this app actually calls.
+const INPUT_CENTS_PER_TOKEN = 0.001_0;  // $5 / MTok × 2
+const OUTPUT_CENTS_PER_TOKEN = 0.005_0; // $25 / MTok × 2
 
 let cachedToken = null;
 let tokenExpiry = 0;

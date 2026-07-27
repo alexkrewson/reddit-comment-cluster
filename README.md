@@ -232,6 +232,29 @@ expired or been revoked. To fix:
 
 ---
 
+## Testing
+
+See `~/apps/shared/testing-guidelines.md` for the full rulebook (three tiers — smoke/
+thorough/costly — and how to handle auth, payments, and AI calls). This project's specifics:
+
+- **Live URL**: https://alexkrewson.github.io/reddit-comment-cluster/bookmarklet.html
+  — test against this, not a local file, per the shared doc's "test against production"
+  rule.
+- **Authentication** applies — magic-link/OTP only, no password. Per the shared doc,
+  capture an already-authenticated session/storage-state by hand once and reuse it
+  rather than scripting the login step.
+- **Real AI/LLM calls** apply — every Analyze/Check Vibe action calls Claude. Always
+  Costly tier, never Smoke or Thorough.
+- **Payments/billing** applies once `BILLING_ENABLED=true` is flipped on the Worker
+  (currently off — see `maintenance_todo.md`). Until then this section is dormant.
+- **Third-party API integrations without AI cost** apply — the Reddit API (via the
+  Cloudflare Worker) and the YouTube transcript fetcher. Exercise by hand rather than
+  in a tight automated loop.
+- No automated test suite exists yet for this app (see `~/apps/shared/testing-guidelines.md`
+  Thorough tier note — manual Playwright MCP pass is the current fallback).
+
+---
+
 ## Setup
 
 ### Prerequisites

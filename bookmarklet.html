@@ -179,6 +179,17 @@
   }
   button.primary:hover:not(:disabled) { opacity: 0.88; }
   button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-icon { display: none; }
+  @media (max-width: 520px) {
+    .row-form { gap: 0.5rem 0.4rem; }
+    .row-form button.secondary,
+    .row-form button.primary {
+      padding: 0.5rem 0.6rem;
+      min-width: 44px;
+    }
+    .row-form .btn-label { display: none; }
+    .row-form .btn-icon { display: inline-block; font-size: 1rem; }
+  }
   button.secondary {
     padding: 0.5rem 1rem;
     min-height: 44px;
@@ -624,19 +635,19 @@
 
 <div class="row-form">
   <input id="url-input" type="url" placeholder="Paste Reddit post URL here…" autocomplete="off" autocorrect="off" spellcheck="false">
-  <button id="download-post-btn" class="secondary">Download Raw Data</button>
-  <button id="analyze-btn" class="primary">Analyze Post</button>
+  <button id="download-post-btn" class="secondary" aria-label="Download Raw Data"><span class="btn-icon" aria-hidden="true">⬇</span><span class="btn-label">Download Raw Data</span></button>
+  <button id="analyze-btn" class="primary" aria-label="Analyze Post"><span class="btn-icon" aria-hidden="true">🔍</span><span class="btn-label">Analyze Post</span></button>
 
   <input id="user-input" type="text" placeholder="Reddit username or u/username…" autocomplete="off" autocorrect="off" spellcheck="false">
-  <button id="download-user-btn" class="secondary">Download Raw Data</button>
-  <button id="user-btn" class="primary">Analyze User</button>
+  <button id="download-user-btn" class="secondary" aria-label="Download Raw Data"><span class="btn-icon" aria-hidden="true">⬇</span><span class="btn-label">Download Raw Data</span></button>
+  <button id="user-btn" class="primary" aria-label="Analyze User"><span class="btn-icon" aria-hidden="true">🔍</span><span class="btn-label">Analyze User</span></button>
 
   <input id="subreddit-input" type="text" placeholder="Subreddit or r/subreddit…" autocomplete="off" autocorrect="off" spellcheck="false">
-  <button id="download-subreddit-btn" class="secondary">Download Raw Data</button>
-  <button id="subreddit-btn" class="primary">Check Vibe</button>
+  <button id="download-subreddit-btn" class="secondary" aria-label="Download Raw Data"><span class="btn-icon" aria-hidden="true">⬇</span><span class="btn-label">Download Raw Data</span></button>
+  <button id="subreddit-btn" class="primary" aria-label="Check Vibe"><span class="btn-icon" aria-hidden="true">📊</span><span class="btn-label">Check Vibe</span></button>
 
   <input id="yt-input" type="url" placeholder="Paste YouTube URL here…" autocomplete="off" autocorrect="off" spellcheck="false">
-  <button id="yt-fetch-btn" class="primary">Get Transcript</button>
+  <button id="yt-fetch-btn" class="primary" aria-label="Get Transcript"><span class="btn-icon" aria-hidden="true">⬇</span><span class="btn-label">Get Transcript</span></button>
 </div>
 
 <div id="transcript-box">

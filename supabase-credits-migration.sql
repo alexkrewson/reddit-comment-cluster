@@ -1,3 +1,19 @@
+-- STALE — DO NOT RUN. Kept for historical reference only.
+--
+-- This targeted the old dedicated project (xjcdicxchvmujjfnpbia) and the bare
+-- `public` schema. As of the 2026-07-24 Supabase consolidation (see
+-- ~/apps/shared/todo.md), this app's tables/functions were created directly
+-- in the shared keeper project (ycuuxnscbxiibsnefgef) under the
+-- `comment_cluster` schema instead — that migration already ran and
+-- `comment_cluster.profiles` etc. already exist live. Running *this* file
+-- now would create colliding objects in the keeper project's `public`
+-- schema (still used natively by its own `packing_lists` app) and would
+-- overwrite the shared `public.handle_new_user()` signup trigger that
+-- currently grants starter credits into both `argument_mapper.profiles`
+-- and `comment_cluster.profiles`.
+--
+-- Original migration below, unmodified, for reference only.
+
 -- Analyzer token-credit system.
 -- Mirrors argument_mapper's credits migration (supabase/migrations/20260605000000_credits.sql)
 -- so the payment flow, balance display, and deduction logic stay consistent across both apps.
