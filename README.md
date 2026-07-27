@@ -245,8 +245,10 @@ thorough/costly — and how to handle auth, payments, and AI calls). This projec
   rather than scripting the login step.
 - **Real AI/LLM calls** apply — every Analyze/Check Vibe action calls Claude. Always
   Costly tier, never Smoke or Thorough.
-- **Payments/billing** applies once `BILLING_ENABLED=true` is flipped on the Worker
-  (currently off — see `maintenance_todo.md`). Until then this section is dormant.
+- **Payments/billing** applies — `BILLING_ENABLED=true` is live on the Worker (see
+  `maintenance_todo.md`). Thorough tier covers pricing/plan display, opening the Buy
+  Credits modal, and closing it without buying; an actual test purchase is Costly
+  tier only, with a test account, per the shared doc's checkout-session caveat.
 - **Third-party API integrations without AI cost** apply — the Reddit API (via the
   Cloudflare Worker) and the YouTube transcript fetcher. Exercise by hand rather than
   in a tight automated loop.
