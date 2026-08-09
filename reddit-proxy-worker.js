@@ -4,6 +4,10 @@
 const SUPABASE_URL = 'https://ycuuxnscbxiibsnefgef.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_oVIOiEk8gNhTfczh2W86bA_f1NnEsCF';
 const SUPABASE_SCHEMA = 'comment_cluster';
+// Identifies this app's Stripe Checkout sessions on a Stripe account shared with
+// argument_mapper/iDisagree. Stamped into session metadata on creation, checked in
+// /stripe-webhook. Changing it orphans in-flight sessions created by the old value.
+const APP_ID = 'analyzer';
 
 // Token-credit pricing, mirrored from argument_mapper's claude-proxy (2x markup
 // over Anthropic's list price). Rates are for claude-opus-4-6 ($5 / $25 per
@@ -245,6 +249,13 @@ async function handleRequest(request, env, corsHeaders) {
     params.append('client_reference_id', user.id);
     params.append('metadata[user_id]', user.id);
     params.append('metadata[credits_cents]', String(amount_cents));
+    // Stamp the app that created this session. The Stripe account is shared with
+    // argument_mapper/iDisagree, and Stripe fans every checkout.session.completed
+    // out to *every* enabled endpoint on the account — so without this marker the
+    // other app's purchases would land here and be credited as ours. Both apps
+    // share auth.users, so the user id resolves in both schemas and the wrong-app
+    // credit would succeed silently rather than error. See the webhook check below.
+    params.append('metadata[app]', APP_ID);
 
     const stripeResp = await fetch('https://api.stripe.com/v1/checkout/sessions', {
       method: 'POST',
@@ -280,6 +291,17 @@ async function handleRequest(request, env, corsHeaders) {
     const event = JSON.parse(rawBody);
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
+
+      // Ignore checkouts this app didn't create — see the metadata[app] stamp in
+      // /create-checkout-session. 200 rather than 400 on purpose: a sibling app's
+      // event is correctly delivered and correctly ignored, so telling Stripe it
+      // failed would just buy retries and a red error rate on a healthy endpoint.
+      if (session.metadata?.app !== APP_ID) {
+        return new Response(JSON.stringify({ received: true, ignored: 'other_app' }), {
+          status: 200, headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
       const userId = session.client_reference_id;
       const creditsCents = parseFloat(session.metadata?.credits_cents ?? '0');
       if (!userId || creditsCents <= 0) {
