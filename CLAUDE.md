@@ -1,4 +1,4 @@
-# Analyzer (reddit-comment-cluster) — notes for future sessions
+# Distillery (reddit-comment-cluster) — notes for future sessions
 
 Read the shared conventions first: `CHANGELOG.md`, then `best-practices.md`,
 `css-best-practices.md` and `testing-guidelines.md`. They live in the

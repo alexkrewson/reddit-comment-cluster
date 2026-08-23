@@ -1,4 +1,4 @@
-# Analyzer
+# Distillery
 
 *(formerly "Reddit Comment Cluster")*
 
@@ -13,7 +13,7 @@ data for free, and keep a history of past results.
 ## What it does
 
 ### Post Analysis
-Paste any Reddit post URL. Analyzer fetches every comment, cleans it up, and asks
+Paste any Reddit post URL. Distillery fetches every comment, cleans it up, and asks
 Claude to:
 - Identify all distinct points and arguments made across the comments (not just
   per-comment summaries)
@@ -23,7 +23,7 @@ Claude to:
 
 ### User Analysis
 Enter a Reddit username in any format (`u/name`, a profile URL, or just the name).
-Analyzer fetches account metadata, up to 300 recent comments (3 pages × 100), and up
+Distillery fetches account metadata, up to 300 recent comments (3 pages × 100), and up
 to 100 recent posts, then asks Claude to analyze the user across four dimensions:
 1. **Bot likelihood** — karma ratios, account age, posting patterns, subreddit diversity
 2. **Engagement value** — would a discussion with this person be rewarding?
@@ -31,7 +31,7 @@ to 100 recent posts, then asks Claude to analyze the user across four dimensions
 4. **Thinking style** — tribalism, critical thinking, open-mindedness, etc.
 
 ### Subreddit Vibe Check
-Enter a subreddit in any format (`r/name`, a URL, or just the name). Analyzer samples
+Enter a subreddit in any format (`r/name`, a URL, or just the name). Distillery samples
 the month's top posts plus comments from the highest-scoring ones, then asks Claude to
 characterize tone, typical topics, engagement style, what performs well, and any norms
 or red flags — so you can "know the room" before posting or engaging.
@@ -54,7 +54,7 @@ handing you a plain-text file to paste into any AI of your choice — no tokens 
 |---|---|---|
 | Frontend | `bookmarklet.html` — single file, no build step | GitHub Pages (static) |
 | Reddit/Claude/Stripe proxy | `reddit-proxy-worker.js` | Cloudflare Worker (`reddit-proxy.alex-krewson.workers.dev`) |
-| Auth + DB | Supabase project | `xjcdicxchvmujjfnpbia.supabase.co` |
+| Auth + DB | Supabase project | `ycuuxnscbxiibsnefgef.supabase.co` |
 
 ```
 Browser (GitHub Pages)

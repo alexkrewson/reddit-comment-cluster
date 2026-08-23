@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Analyzer</title>
+<title>Distillery</title>
 <style>
   /* Design tokens from ~/apps/shared/css-best-practices.md: dark-first "Ember"
      canvas (folder-wide default theme), explicit [data-theme="light"] opt-in
@@ -469,7 +469,7 @@
   // Full 8-theme preset library, shared verbatim across every app in
   // ~/apps (see ~/apps/shared/css-best-practices.md — Multi-theme color
   // system). Each preset bundles a dark/light mode with an accent pair;
-  // Analyzer has no two-sided/multi-entity structure, so only "a" is used
+  // Distillery has no two-sided/multi-entity structure, so only "a" is used
   // as the single functional --accent — "b" is kept for the swatch picker
   // so the picker itself matches every other app's.
   var PRESETS = {
@@ -502,7 +502,7 @@
 
 <div class="top-row">
   <div>
-    <h1>Analyzer</h1>
+    <h1>Distillery</h1>
     <p class="subtitle">Paste a Reddit post URL to cluster comment points, a username to profile a user, a subreddit to check its vibe, or a YouTube URL to fetch and analyze a transcript.</p>
   </div>
   <div class="settings-wrap">
@@ -566,19 +566,19 @@
       <div class="about-scroll" id="about-scroll">
         <section id="about-overview">
           <h2>Overview</h2>
-          <p>Analyzer uses Claude to make sense of Reddit threads, Reddit users, subreddit culture, and YouTube transcripts. Sign in with a magic link (top right, under Account) to unlock every tool — AI analysis, raw data downloads, and your history are all tied to your account.</p>
+          <p>Distillery uses Claude to make sense of Reddit threads, Reddit users, subreddit culture, and YouTube transcripts. Sign in with a magic link (top right, under Account) to unlock every tool — AI analysis, raw data downloads, and your history are all tied to your account.</p>
         </section>
         <section id="about-post">
           <h2>Post Analysis</h2>
-          <p>Paste a Reddit post URL. Analyzer fetches every comment, strips deleted/removed/modteam noise and URLs, sorts by score, and asks Claude to identify the distinct points and arguments being made — not just summarize comment-by-comment — clustered into themed groups with their share of the discussion.</p>
+          <p>Paste a Reddit post URL. Distillery fetches every comment, strips deleted/removed/modteam noise and URLs, sorts by score, and asks Claude to identify the distinct points and arguments being made — not just summarize comment-by-comment — clustered into themed groups with their share of the discussion.</p>
         </section>
         <section id="about-user">
           <h2>User Analysis</h2>
-          <p>Enter a Reddit username (any format — <code>u/name</code>, a profile URL, or just the name). Analyzer fetches account metadata plus recent comments and posts, then asks Claude for a clinical read on bot likelihood, engagement value, personality, and thinking style — with direct quotes where relevant.</p>
+          <p>Enter a Reddit username (any format — <code>u/name</code>, a profile URL, or just the name). Distillery fetches account metadata plus recent comments and posts, then asks Claude for a clinical read on bot likelihood, engagement value, personality, and thinking style — with direct quotes where relevant.</p>
         </section>
         <section id="about-vibe">
           <h2>Subreddit Vibe Check</h2>
-          <p>Enter a subreddit (any format — <code>r/name</code>, a URL, or just the name). Analyzer samples the month's top posts plus comments from the highest-scoring ones, then asks Claude to characterize tone, typical topics, how people engage with each other, what performs well, and any norms or red flags — so you can "know the room" before posting.</p>
+          <p>Enter a subreddit (any format — <code>r/name</code>, a URL, or just the name). Distillery samples the month's top posts plus comments from the highest-scoring ones, then asks Claude to characterize tone, typical topics, how people engage with each other, what performs well, and any norms or red flags — so you can "know the room" before posting.</p>
         </section>
         <section id="about-youtube">
           <h2>YouTube Transcripts</h2>

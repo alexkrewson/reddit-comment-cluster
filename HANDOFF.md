@@ -1,4 +1,4 @@
-# Analyzer — Handoff Notes
+# Distillery — Handoff Notes
 
 *(formerly "Reddit Comment Cluster")*
 
@@ -18,7 +18,7 @@ The only file that matters for the frontend is `bookmarklet.html` in the root of
 |---|---|---|
 | Frontend | `bookmarklet.html` | GitHub Pages (static) |
 | Reddit/Claude/Stripe proxy | `reddit-proxy-worker.js` | Cloudflare Worker (`reddit-proxy.alex-krewson.workers.dev`) |
-| Auth + DB | Supabase project | `xjcdicxchvmujjfnpbia.supabase.co` |
+| Auth + DB | Supabase project | `ycuuxnscbxiibsnefgef.supabase.co` |
 
 **Why the Cloudflare Worker?** The Claude API key, Reddit OAuth credentials, and Stripe secret key can't live in client-side JS. The worker verifies the user's Supabase JWT before forwarding requests to Claude (and checks/deducts token credits), proxies Reddit API calls, resolves Reddit share/mobile links, and handles Stripe checkout-session creation + the payment webhook.
 
@@ -96,11 +96,15 @@ credit system for a consistent balance/top-up/deduction experience.
   `X-Credits-Remaining` after every analysis; Buy Credits modal opens Stripe Checkout
   in a new tab; a 402 response opens the same modal instead of a generic error.
 
-⚠️ **Unresolved before going live:** `INPUT_CENTS_PER_TOKEN`/`OUTPUT_CENTS_PER_TOKEN` in
-`reddit-proxy-worker.js` are placeholders copied from Argument Mapper's Claude Sonnet
-4.5 rates ($3/$15 per MTok × 2 markup). This app calls `claude-opus-4-6`, a different
-and pricier model — substitute real Opus pricing before charging real users, or every
-analysis undercharges relative to the actual Anthropic bill.
+**Pricing constants — resolved 2026-07-26.** `INPUT_CENTS_PER_TOKEN`/`OUTPUT_CENTS_PER_TOKEN`
+in `reddit-proxy-worker.js` are real `claude-opus-4-6` rates ($5/$25 per MTok × 2 markup
+= 0.0010 / 0.0050 cents per token). They were briefly Sonnet-4.5 rates copied from Argument
+Mapper, which would have undercharged every analysis; that is fixed and this paragraph is
+kept so nobody re-opens it.
+
+**Billing is live and proven end to end (2026-08-08).** Two real 50¢ purchases were
+delivered 200 and credited, with the balance noted immediately before and after the second
+one — so "one purchase grants exactly one credit" is confirmed, not inferred.
 
 ---
 
@@ -133,8 +137,8 @@ See `DEPLOY.md`. Requires Node 20 and a Cloudflare API token (not `wrangler logi
 
 | Thing | Value |
 |---|---|
-| Supabase URL | `https://xjcdicxchvmujjfnpbia.supabase.co` |
-| Supabase anon key | `sb_publishable_YZkXT-j_gaUGKhco7ENJ1Q_ydVit7Nf` |
+| Supabase URL | `https://ycuuxnscbxiibsnefgef.supabase.co` |
+| Supabase anon key | `sb_publishable_oVIOiEk8gNhTfczh2W86bA_f1NnEsCF` |
 | Worker URL | `https://reddit-proxy.alex-krewson.workers.dev` |
 | GitHub repo | `alexkrewson/reddit-comment-cluster` |
 

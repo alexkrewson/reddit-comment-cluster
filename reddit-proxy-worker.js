@@ -7,6 +7,9 @@ const SUPABASE_SCHEMA = 'comment_cluster';
 // Identifies this app's Stripe Checkout sessions on a Stripe account shared with
 // argument_mapper/iDisagree. Stamped into session metadata on creation, checked in
 // /stripe-webhook. Changing it orphans in-flight sessions created by the old value.
+// DELIBERATELY STILL 'analyzer' after the 2026-08-23 rename to Distillery. This is a
+// wire value shared with live Stripe metadata, not a display name — same reasoning as
+// iDisagree keeping its `debates` table. Do not tidy it.
 const APP_ID = 'analyzer';
 
 // Token-credit pricing, mirrored from argument_mapper's claude-proxy (2x markup
