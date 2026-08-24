@@ -25,16 +25,48 @@ const adb = path.join(
 );
 const sh = (args) => execFileSync(adb, args, { encoding: "utf8" }).trim();
 
-const pid = sh(["shell", "pidof", APP_ID]).split(/\s+/)[0];
+// Wait for the process rather than asking once. `am start` returns as soon as
+// the intent is dispatched, not when the app is up, so a probe chained straight
+// after it asks before there is anything to ask about -- and `pidof` EXITS 1
+// when it finds nothing, which throws out of execFileSync rather than returning
+// the empty string the check below expects. Wait on the condition you are about
+// to assert.
+async function waitForPid(timeoutMs = 20000) {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    try {
+      const pid = sh(["shell", "pidof", APP_ID]).split(/\s+/)[0];
+      if (pid) return pid;
+    } catch { /* pidof exits 1 when the process is not up yet */ }
+    if (Date.now() > deadline) return null;
+    await new Promise((r) => setTimeout(r, 400));
+  }
+}
+
+const pid = await waitForPid();
 if (!pid) {
-  console.error(`${APP_ID} is not running. Launch it first:`);
+  console.error(`${APP_ID} never came up. Launch it and try again:`);
   console.error(`  adb shell am start -n ${APP_ID}/.MainActivity`);
   process.exit(2);
 }
 sh(["forward", `tcp:${PORT}`, `localabstract:webview_devtools_remote_${pid}`]);
 
-const list = await (await fetch(`http://localhost:${PORT}/json`)).json();
-const page = list.find((p) => p.type === "page" && p.webSocketDebuggerUrl);
+// The WebView registers its devtools socket a moment after the process exists,
+// so this waits too rather than assuming the pid was the last thing to happen.
+async function waitForPage(timeoutMs = 20000) {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    try {
+      const list = await (await fetch(`http://localhost:${PORT}/json`)).json();
+      const page = list.find((p) => p.type === "page" && p.webSocketDebuggerUrl);
+      if (page) return page;
+    } catch { /* socket not listening yet */ }
+    if (Date.now() > deadline) return null;
+    await new Promise((r) => setTimeout(r, 400));
+  }
+}
+
+const page = await waitForPage();
 if (!page) {
   console.error("no debuggable WebView page found — is this a debug build?");
   process.exit(1);
@@ -50,6 +82,30 @@ ws.addEventListener("message", (e) => {
   if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); }
 });
 await new Promise((res) => ws.addEventListener("open", res));
+
+// Wait until the page has finished running its script before asking it anything.
+//
+// Attaching is not readiness. A probe that fires mid-execution sees a page where
+// `publicAppUrl` already resolves but `IS_NATIVE` does not -- function
+// declarations are hoisted and callable the moment the script starts, while a
+// top-level `const` is in its temporal dead zone until execution reaches the
+// line. That asymmetry is what a flaky "IS_NATIVE is not defined" actually means,
+// and it is a property of the harness, not a bug in the app.
+async function waitForReady(timeoutMs = 20000) {
+  const deadline = Date.now() + timeoutMs;
+  const expr = "document.readyState === 'complete' && typeof IS_NATIVE !== 'undefined'";
+  for (;;) {
+    const r = await send("Runtime.evaluate", { expression: expr, returnByValue: true });
+    if (r.result?.result?.value === true) return true;
+    if (Date.now() > deadline) return false;
+    await new Promise((res) => setTimeout(res, 250));
+  }
+}
+if (!(await waitForReady())) {
+  console.error("the page never finished initialising — probing it would report noise");
+  ws.close();
+  process.exit(1);
+}
 
 // [label, expression, expected]. `undefined` expected means "report, don't judge".
 const probes = [
