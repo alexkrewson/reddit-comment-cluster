@@ -1,4 +1,61 @@
-# Analyzer — Maintenance To-Do
+# Distillery — Maintenance To-Do
+
+  ============================================================================
+  START HERE — 2026-08-23. Everything below this block is accurate history for
+  its own date and is deliberately NOT renamed: it says "Analyzer" because that
+  is what the app was called then.
+  ============================================================================
+
+  THE APP IS NOW CALLED DISTILLERY, it is wrapped for Android, and the target
+  is the Play closed track. **`PLAY-STORE.md` is the live document** — the
+  ordered route, what is done, and what iDisagree already paid for. This block
+  only records what changed today.
+
+  `APP_ID` in the Worker is still `'analyzer'` and must stay that way. It is
+  stamped into live Stripe metadata, not a display name.
+
+  SHIPPED TODAY (4 commits, tree clean, NOTHING PUSHED — see the ordering note
+  at the end of this block, the push has to come after the domain exists):
+    4716f04  renamed to Distillery. Also fixed three stale doc values: the
+             retired Supabase project ref that step 4 of the NEXT list below
+             already flagged, plus two it had not — HANDOFF's anon key was ALSO
+             the retired project's, and its pricing warning had been fixed on
+             2026-07-26 while still reading as an open blocker.
+    f114e36  Capacitor Android project, com.alexkrewson.distillery. No bundler:
+             build-web.mjs stages bookmarklet.html as both index.html and
+             bookmarklet.html, so the URL people have bookmarked keeps working
+             as a copy rather than a redirect.
+             Four WebView breakages fixed, all of them iDisagree's lessons:
+             clipboard refused, origin is https://localhost, magic links
+             therefore cannot sign anyone into the app (6-digit codes added,
+             and they are the ONLY Android sign-in path), back button closed
+             the app from anywhere.
+             Buy Credits removed on native, and allowBackup=false, both done
+             BEFORE first release because both are expensive to change after.
+    1f2f9c8  privacy/index.html, and PLAY-STORE.md.
+    ce5f2d8  verify-artifact.mjs and probe-device.mjs, both passing.
+    (+ store-listing.md and check-listing.mjs, uncommitted at time of writing)
+
+  PROVEN ON AN EMULATOR, not inferred from a green build: the app launches, the
+  WebView origin really is https://localhost, publicAppUrl() returns the real
+  domain, #buy-credits-btn is absent from the live DOM, code entry exists, both
+  plugins registered, no JS errors.
+
+  THE BIGGEST RISK IS NOT ANDROID, it is that Play wants in-app account
+  deletion and this app has none. The obvious client-side fix would silently
+  affect zero rows: `comment_cluster.analyses` has select and insert policies
+  but no delete. Read the second section of PLAY-STORE.md before starting it.
+
+  ORDER OF OPERATIONS FOR THE REMAINING OUTWARD-FACING STEPS, because doing
+  them backwards breaks live auth: stand up Cloudflare Pages and the domain
+  FIRST, then add it to Supabase's redirect allow-list, and only THEN rename
+  the GitHub repo. Renaming the repo moves the GitHub Pages URL, and the
+  current live app signs people in against that URL.
+
+  STILL OPEN FROM BEFORE, both untouched today:
+    - The post-payment redirect landing signed out (see the bug entry below).
+    - Manual testing round 1, step 11. Still the largest untouched item.
+
 
 Tracking checklist for the Analyzer update spec. Checked off as completed, with a commit
 after each step so progress survives a crash. See the approved plan for full rationale.
