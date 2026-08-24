@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy Policy — Distillery</title>
+<style>
+  :root { --bg:#ffffff; --text:#0f172a; --muted:#64748b; --border:#e2e8f0; --link:#2563eb; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0f172a; --text:#f1f5f9; --muted:#92a1b5; --border:#1e293b; --link:#7dd3fc; }
+  }
+  body { margin:0; background:var(--bg); color:var(--text);
+         font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+         line-height:1.6; }
+  main { max-width:720px; margin:0 auto; padding:48px 24px 96px; }
+  h1 { font-size:1.75rem; margin-bottom:4px; }
+  h2 { font-size:1.15rem; margin-top:2.5em; border-top:1px solid var(--border); padding-top:1.5em; }
+  .meta { color:var(--muted); font-size:0.9rem; margin-bottom:2em; }
+  a { color:var(--link); }
+  ul { padding-left:1.3em; }
+  table { border-collapse:collapse; width:100%; margin:1em 0; }
+  th, td { text-align:left; padding:8px 12px; border-bottom:1px solid var(--border); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.02em; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>Privacy Policy</h1>
+<p class="meta">Distillery &middot; Last updated August 23, 2026</p>
+
+<p>
+  Distillery ("we", "our", "the app") uses AI to summarise and characterise public content:
+  Reddit posts and their comments, Reddit user profiles, subreddit culture, and YouTube
+  transcripts. This page explains what data we collect, why, and how you can control it. It
+  applies both to the web app at
+  <a href="https://distillery.trolleysolution.com">distillery.trolleysolution.com</a> and to
+  the Android app.
+</p>
+
+<h2>What we collect</h2>
+<table>
+  <thead><tr><th>Data</th><th>Why</th><th>Where it lives</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>Your email address</td>
+      <td>It is your sign-in. We use it to send you a sign-in link or code, and nothing else &mdash; no
+          marketing, no newsletters.</td>
+      <td>Supabase (our database and authentication provider)</td>
+    </tr>
+    <tr>
+      <td>Your analysis history</td>
+      <td>So you can reopen a past result without paying to run it again. Each entry stores what you
+          asked about (a URL, username or subreddit) and the text of the result.</td>
+      <td>Supabase</td>
+    </tr>
+    <tr>
+      <td>Your credit balance</td>
+      <td>AI analysis is charged per use. We store a balance in cents and deduct the real cost of each
+          analysis from it.</td>
+      <td>Supabase</td>
+    </tr>
+    <tr>
+      <td>Theme choice</td>
+      <td>So the app looks the same next time you open it.</td>
+      <td>Your own browser or device only. It is never sent to us.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>
+  <strong>We do not collect analytics, advertising identifiers, or location.</strong> There is no
+  advertising in Distillery and no third-party tracking.
+</p>
+
+<h2>What you type into the app</h2>
+<p>
+  The things you ask Distillery to analyse &mdash; a Reddit link, a username, a subreddit name, a YouTube
+  URL &mdash; are sent to our server, which fetches the corresponding <em>public</em> content and passes it
+  to Anthropic's Claude API to produce the analysis. The result is then saved to your history.
+</p>
+<p>
+  Distillery only ever reads content that is already public. It does not sign in to Reddit or YouTube
+  as you, cannot see private messages or private subreddits, and has no access to any account of yours
+  on those services.
+</p>
+<p>
+  Anthropic processes this content to generate the response. Under Anthropic's commercial terms, API
+  inputs and outputs are not used to train their models.
+</p>
+
+<h2>About analysing other people</h2>
+<p>
+  Distillery can summarise a Reddit user's public posting history. That information is public and the
+  app adds no private data to it, but the summary is still about a real person. Please use it
+  accordingly: it is intended for understanding a conversation you are part of, not for building
+  profiles of individuals, and using it to harass anyone is a breach of these terms and of Reddit's.
+</p>
+
+<h2>Payments</h2>
+<p>
+  Credits are bought through <a href="https://stripe.com/privacy">Stripe</a> on the website. Your card
+  details go to Stripe directly and never reach our servers &mdash; we receive only a confirmation that a
+  payment succeeded and the amount to credit.
+</p>
+<p>
+  <strong>The Android app contains no purchasing.</strong> The Buy Credits option is not present in it.
+</p>
+
+<h2>Who we share data with</h2>
+<p>We use a small number of processors, each for one job:</p>
+<ul>
+  <li><strong>Supabase</strong> &mdash; database and sign-in.</li>
+  <li><strong>Anthropic</strong> &mdash; the Claude API that produces each analysis.</li>
+  <li><strong>Cloudflare</strong> &mdash; hosting, and the server that talks to Reddit, Anthropic and Stripe.</li>
+  <li><strong>Stripe</strong> &mdash; payments, on the website only.</li>
+  <li><strong>Resend</strong> &mdash; delivers your sign-in email.</li>
+</ul>
+<p>We do not sell your data, and we do not share it with anyone else.</p>
+
+<h2>Data security</h2>
+<p>
+  Traffic is encrypted in transit. Your history and credit balance are protected by row-level security
+  rules that scope every record to your own user id, so one account cannot read another's data. API keys
+  are held as server-side secrets and are never present in the app.
+</p>
+
+<h2 id="delete">Deleting your data or your account</h2>
+<p>
+  Email <a href="mailto:support@trolleysolution.com?subject=Distillery%20deletion%20request">support@trolleysolution.com</a>
+  from the address you signed up with and say which of these you want:
+</p>
+<table>
+  <thead><tr><th>Request</th><th>What it removes</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>Delete my data</strong></td>
+      <td>Every saved analysis in your history, and your credit balance. Your sign-in stays active, so
+          you can keep using Distillery with an empty history. Any unused credits are forfeited.</td>
+    </tr>
+    <tr>
+      <td><strong>Delete my account</strong></td>
+      <td>Everything above, plus the sign-in itself &mdash; your email address is removed from our
+          authentication provider. This cannot be undone.</td>
+    </tr>
+  </tbody>
+</table>
+<p>We action these within 30 days and confirm by reply.</p>
+
+<h2>If you have already uninstalled the app</h2>
+<p>
+  Uninstalling the Android app does not delete anything on our servers &mdash; it only clears what was
+  stored on your phone. You do not need to reinstall to get rid of your data: the email route above works
+  whether or not you still have the app.
+</p>
+
+<h2>What is kept after deletion</h2>
+<p>
+  Deleted content is removed from our live database straight away. Records of credit purchases are held
+  by <a href="https://stripe.com/privacy">Stripe</a>, who retain transaction records to meet their own
+  legal and tax obligations &mdash; that is outside our control and is not removed by deleting your
+  account. We keep no copy of your card details at any point.
+</p>
+
+<h2>Children's privacy</h2>
+<p>
+  Distillery is not directed at children and is not intended for anyone under 13. We do not knowingly
+  collect data from children. If you believe a child has created an account, contact us and we will
+  remove it.
+</p>
+
+<h2>Changes to this policy</h2>
+<p>
+  If this policy changes materially we will update the date at the top of this page. Continued use after
+  a change means you accept the updated policy.
+</p>
+
+<h2>Contact</h2>
+<p>
+  <a href="mailto:support@trolleysolution.com">support@trolleysolution.com</a>
+</p>
+
+</main>
+</body>
+</html>

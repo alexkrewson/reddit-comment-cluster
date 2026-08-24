@@ -1,0 +1,5 @@
+# Keep the Gradle wrapper LF. core.autocrlf=true would otherwise rewrite it to
+# CRLF on checkout, and a CRLF shell script fails on Linux with a "bad
+# interpreter" error. Windows uses gradlew.bat and never notices.
+android/gradlew text eol=lf
+*.sh text eol=lf
