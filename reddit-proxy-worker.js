@@ -1,5 +1,5 @@
 // Supabase project "the keeper". The pre-consolidation project
-// (xjcdicxchvmujjfnpbia) was retired; the cutover this block used to hedge against
+// was retired; the cutover the old constants here used to hedge against
 // was verified when billing went live end to end on 2026-08-08.
 const SUPABASE_URL = 'https://ycuuxnscbxiibsnefgef.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_oVIOiEk8gNhTfczh2W86bA_f1NnEsCF';

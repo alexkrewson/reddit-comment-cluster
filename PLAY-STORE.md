@@ -27,6 +27,30 @@ their own participation.
 - Buy Credits removed on Android, before any Android user can ever have paid.
 - `allowBackup=false`, so the Supabase session token does not travel to Drive.
 - Privacy policy at `privacy/index.html`, with a `#delete` anchor.
+- Two verification scripts, and both pass:
+  - `npm run verify:apk` reads the shipped artifact back and checks nine things
+    plus the signature. It parses the zip in-process — `unzip` is not installed
+    here and the `tar` on PATH is GNU tar, which can read neither a Windows path
+    nor a zip. It uses **apksigner, not jarsigner**: modern APKs sign with
+    scheme v2/v3, which has no `META-INF/MANIFEST.MF`, so jarsigner calls a
+    perfectly good APK `no manifest.` and teaches you to ignore the line.
+  - `npm run probe:device` asks the *running* app what is true of it, over the
+    WebView's devtools socket. Different question from the first: a native gate
+    can be correctly packaged and still evaluate the wrong way.
+  - `npm run validate:apk` chains build → verify → install → probe.
+
+**Proven on an emulator (Android 16, API 36), 2026-08-23** — not inferred from a
+green build:
+
+| Claim | Observed |
+|---|---|
+| App launches and is the resumed activity | `topResumedActivity=…distillery/.MainActivity` |
+| The WebView origin really is `https://localhost` | logcat: `Handling local request: https://localhost/`, and `window.location.origin` |
+| `publicAppUrl()` substitutes the real site | returns `https://distillery.trolleysolution.com/` |
+| No Stripe purchase path on Android | `#buy-credits-btn` is absent from the live DOM |
+| Code sign-in is reachable | `#auth-code-row` exists |
+| Clipboard and App plugins registered | both true |
+| No JavaScript errors on load | none |
 
 **Not done, and roughly in the order it matters:**
 
@@ -133,10 +157,22 @@ upload the choice of key is locked; losing it means never publishing an update
 under that key again. iDisagree ended up with two competing keystores on two
 machines and had to settle which was canonical before it could submit.
 
-## 4. Store assets
+## 4. Store assets — and the fix that must come first
 
-Distillery currently ships **Capacitor's default launcher icon**. That has to
-change before anyone sees it.
+**Do the system bars before capturing anything.** The launch screenshot shows
+white bands above and below the app: the status and navigation bars are the
+system default against Distillery's near-black Ember canvas. It is visible in
+the very first screenshot anyone would take.
+
+**Learned:** iDisagree deferred exactly this and it cost it the screenshots. It
+is not the one-line colour change it looks like — `targetSdk 36` deprecates
+`statusBarColor`, so it needs edge-to-edge plus safe-area insets plus per-theme
+icon polarity, and Distillery has **eight** themes across light and dark. Its
+own note is blunt about the ordering: *"Fix the system bars first. It changes how
+every screen looks, so any screenshot taken before it is wasted work."*
+
+Distillery currently also ships **Capacitor's default launcher icon**. That has
+to change before anyone sees it.
 
 - Launcher icon, and a **512×512** PNG for the listing.
 - Feature graphic, **1024×500**.
@@ -193,9 +229,15 @@ project and was nearly uploaded:
 - `buy-credits-btn').remove()` present (no Stripe path on Android)
 - signed with the upload key
 
-There is a working readback recipe in this session's history: unzip the APK and
-grep `assets/public/index.html`. Worth promoting to a script before the second
-upload.
+That is `npm run verify:aab`, which runs exactly those checks and exits non-zero
+if any fails. It reads an AAB from `base/assets/` rather than `assets/`, and
+checks the signature with jarsigner for a bundle (an AAB is a jar) and apksigner
+for an APK.
+
+The one check it cannot make is that you built from a clean tree. The uploader
+stamps `-dirty` into the filename when you did not, which is the cheapest
+possible reminder — iDisagree cut its submission artifacts from a clean tree
+deliberately and recorded the sha.
 
 ## 7. Testers
 

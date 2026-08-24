@@ -11,7 +11,12 @@
     "build:apk:release": "npm run sync:android && node scripts/gradlew.mjs assembleRelease",
     "build:aab:release": "npm run sync:android && node scripts/gradlew.mjs bundleRelease",
     "deploy": "npm run build:web && wrangler pages deploy www --project-name=distillery --branch=main",
-    "deploy:worker": "wrangler deploy"
+    "deploy:worker": "wrangler deploy",
+    "verify:apk": "node scripts/verify-artifact.mjs android/app/build/outputs/apk/debug/app-debug.apk",
+    "verify:aab": "node scripts/verify-artifact.mjs android/app/build/outputs/bundle/release/app-release.aab",
+    "probe:device": "node scripts/probe-device.mjs",
+    "install:apk": "adb install -r android/app/build/outputs/apk/debug/app-debug.apk && adb shell am start -n com.alexkrewson.distillery/.MainActivity",
+    "validate:apk": "npm run build:apk && npm run verify:apk && npm run install:apk && npm run probe:device"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.1",
