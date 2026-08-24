@@ -1,0 +1,141 @@
+apply plugin: 'com.android.application'
+
+// versionCode is DERIVED, never typed. A hardcoded value means every build looks
+// identical to Android, so installing a fix over the previous build either keeps
+// the old code silently or has to be uninstalled first — and then "I installed
+// the fix and it still does it" is indistinguishable from a failed fix.
+// The commit count is monotonic on a linear main branch and needs no state file.
+// The floor of 1 matters: a shallow clone or a missing git yields 0, and a
+// versionCode that goes DOWN is rejected by Play and breaks installs.
+def gitVersionCode() {
+    try {
+        def out = new ByteArrayOutputStream()
+        exec { commandLine 'git', 'rev-list', '--count', 'HEAD'
+               standardOutput = out; workingDir = rootProject.projectDir
+               errorOutput = new ByteArrayOutputStream() }
+        return Math.max(out.toString().trim() as Integer, 1)
+    } catch (Exception e) { return 1 }
+}
+ext.computedVersionCode = gitVersionCode()
+
+// build.gradle skips signing when this file is absent and STILL reports
+// BUILD SUCCESSFUL, producing a bundle Play rejects. keystore.properties is
+// gitignored; see PLAY-STORE.md for what belongs in it.
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+android {
+    namespace = "com.alexkrewson.distillery"
+    compileSdk = rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "com.alexkrewson.distillery"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode project.ext.computedVersionCode
+        versionName "1.0.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    signingConfigs {
+        release {
+            if (keystorePropertiesFile.exists()) {
+                storeFile file("${keystoreProperties['STORE_FILE']}")
+                storePassword keystoreProperties['STORE_PASSWORD']
+                keyAlias keystoreProperties['KEY_ALIAS']
+                keyPassword keystoreProperties['KEY_PASSWORD']
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (keystorePropertiesFile.exists()) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}
+
+// Auto-upload built artifacts to Google Drive via rclone. Uses the SHARED
+// uploader by path — never a copy in this repo. art_app is what a copy costs:
+// it carried an older version whose bug the shared one had already fixed, and
+// rediscovered it weeks later via a green build over an empty Drive folder.
+//
+// Do NOT go back to iterating task.outputs.files. assemble* are aggregation
+// tasks that declare no outputs, so the loop body never runs, nothing uploads,
+// and the build still prints BUILD SUCCESSFUL. The failure mode is silence,
+// which is why every path below logs — including the ones that do nothing.
+def uploader = "${rootProject.projectDir}/../../apps-shared/scripts/upload-apk.mjs"
+
+def uploadArtifacts = { String subdir, String ext ->
+    def dir = new File("${buildDir}/outputs/${subdir}")
+    if (!dir.isDirectory()) { logger.lifecycle("upload-apk: ${dir} does not exist"); return }
+    def found = dir.listFiles()?.findAll { it.isFile() && it.name.endsWith(ext) } ?: []
+    if (found.isEmpty()) logger.lifecycle("upload-apk: no ${ext} found in ${dir}")
+    if (!found.isEmpty() && !new File(uploader).isFile()) {
+        logger.error("upload-apk: uploader not found at ${uploader} — is apps-shared checked out alongside? Artifact NOT uploaded.")
+        return
+    }
+    found.each { f ->
+        try {
+            // node, not bash: a bash uploader runs from Git Bash and fails from
+            // Android Studio's Gradle on the same Windows machine.
+            // --version is required because versionCode is COMPUTED here — the
+            // uploader's fallback greps versionCodes+(d+) out of this file,
+            // finds nothing, and quietly drops the vN from the filename at
+            // exactly the point the versions started differing.
+            exec {
+                commandLine 'node', uploader, f.absolutePath, "--version=${project.ext.computedVersionCode}"
+                ignoreExitValue = true
+            }
+        } catch (Exception e) {
+            // ignoreExitValue covers a non-zero exit only; a missing executable
+            // throws. Without this catch, "node isn't on PATH for this shell"
+            // fails the whole build over an optional convenience upload.
+            logger.error("upload-apk: could not run the uploader (${e.message}). Is node on PATH for the environment Gradle was launched from? Build is fine; the artifact wasn't uploaded.")
+        }
+    }
+}
+
+afterEvaluate {
+    tasks.findByName('assembleDebug')?.doLast   { uploadArtifacts('apk/debug', '.apk') }
+    tasks.findByName('assembleRelease')?.doLast { uploadArtifacts('apk/release', '.apk') }
+    tasks.findByName('bundleRelease')?.doLast   { uploadArtifacts('bundle/release', '.aab') }
+}

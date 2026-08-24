@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Distillery</string>
+    <string name="title_activity_main">Distillery</string>
+    <string name="package_name">com.alexkrewson.distillery</string>
+    <string name="custom_url_scheme">com.alexkrewson.distillery</string>
+</resources>

@@ -1,6 +1,6 @@
-// Old (pre-consolidation) project, kept for reference until cutover is verified:
-// const SUPABASE_URL = 'https://xjcdicxchvmujjfnpbia.supabase.co';
-// const SUPABASE_ANON_KEY = 'sb_publishable_YZkXT-j_gaUGKhco7ENJ1Q_ydVit7Nf';
+// Supabase project "the keeper". The pre-consolidation project
+// (xjcdicxchvmujjfnpbia) was retired; the cutover this block used to hedge against
+// was verified when billing went live end to end on 2026-08-08.
 const SUPABASE_URL = 'https://ycuuxnscbxiibsnefgef.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_oVIOiEk8gNhTfczh2W86bA_f1NnEsCF';
 const SUPABASE_SCHEMA = 'comment_cluster';

@@ -1,2 +1,24 @@
 .wrangler/
 node_modules/
+
+# Logs
+*.log
+
+# Build output. www/ is generated from bookmarklet.html by scripts/build-web.mjs;
+# bookmarklet.html is the source of truth, www/ never is.
+www/
+android/app/src/main/assets/public/
+
+# Android build artifacts
+android/.gradle
+android/app/build
+android/build
+android/local.properties
+
+# Android signing — never commit. keystore.properties holds the passwords in
+# plaintext, and the .jks is the upload key itself. Back both up somewhere
+# outside the repo: lose them and you can never publish an update under this
+# key again, and Play will not let you change it.
+android/keystore.properties
+*.jks
+*.keystore

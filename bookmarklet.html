@@ -517,7 +517,12 @@
           <input id="auth-email" type="email" placeholder="Email address" autocomplete="email" spellcheck="false">
           <button id="auth-send-btn" class="primary">Send magic link</button>
         </div>
-        <p id="auth-sent-note" class="help-text" style="display:none;">Magic link sent — check your email.</p>
+        <p id="auth-sent-note" class="help-text" style="display:none;">Check your email — click the link, or type the 6-digit code below.</p>
+        <div id="auth-code-row" class="input-row" style="display:none; margin-bottom:0; margin-top:6px;">
+          <input id="auth-code" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="6-digit code" spellcheck="false" maxlength="8">
+          <button id="auth-code-btn" class="primary">Sign in</button>
+        </div>
+        <p id="auth-code-error" class="help-text" style="display:none; color:var(--danger, #d66);"></p>
         <div id="auth-logged-in-note" style="display:none;">
           <p id="auth-email-display" class="settings-user-email"></p>
           <p id="credit-balance-display" class="settings-user-email"></p>
@@ -688,12 +693,45 @@
 
 <script>
 // ---- Supabase auth ----
-// Old (pre-consolidation) project, kept for reference until cutover is verified:
-// const SUPABASE_URL = 'https://xjcdicxchvmujjfnpbia.supabase.co';
-// const SUPABASE_ANON_KEY = 'sb_publishable_YZkXT-j_gaUGKhco7ENJ1Q_ydVit7Nf';
+// Supabase project "the keeper". The pre-consolidation project
+// (xjcdicxchvmujjfnpbia) was retired; the cutover this block used to hedge against
+// was verified when billing went live end to end on 2026-08-08.
 const SUPABASE_URL = 'https://ycuuxnscbxiibsnefgef.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_oVIOiEk8gNhTfczh2W86bA_f1NnEsCF';
 const WORKER_URL = 'https://reddit-proxy.alex-krewson.workers.dev';
+
+// ---- Native (Capacitor / Android) ----------------------------------------
+// Capacitor registers window.Capacitor and window.Capacitor.Plugins for every
+// installed native plugin, so this file needs no bundler and no import to reach
+// them. On the web every branch below falls through to the browser behaviour.
+const CAP = window.Capacitor;
+const IS_NATIVE = !!(CAP && typeof CAP.isNativePlatform === 'function' && CAP.isNativePlatform());
+
+// In the Android WebView window.location.origin is "https://localhost" — not an
+// address anything outside the app can reach. Anywhere a URL is handed to an
+// external system (Supabase redirects, Stripe return URLs) it must be the real
+// site instead, or the user is sent somewhere that does not exist. iDisagree
+// shipped a build with exactly this bug in its Stripe redirect.
+const WEB_ORIGIN = 'https://distillery.trolleysolution.com/';
+function publicAppUrl() {
+  return IS_NATIVE ? WEB_ORIGIN : window.location.origin + window.location.pathname;
+}
+
+// navigator.clipboard is refused by the Android WebView, and the execCommand
+// fallback fails there too — so on native this must go through the plugin.
+// Returns true/false rather than throwing; every caller reports to the user.
+async function copyText(text) {
+  try {
+    if (IS_NATIVE && CAP.Plugins && CAP.Plugins.Clipboard) {
+      await CAP.Plugins.Clipboard.write({ string: text });
+      return true;
+    }
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: { flowType: 'implicit' },
@@ -823,6 +861,7 @@ function setAuthUI(session) {
   if (session) {
     authLoggedOut.style.display = 'none';
     authSentNote.style.display = 'none';
+    setCodeEntryVisible(false);
     authLoggedInNote.style.display = 'block';
     document.getElementById('auth-email-display').textContent = session.user.email;
     appContent.style.display = 'block';
@@ -831,6 +870,7 @@ function setAuthUI(session) {
   } else {
     authLoggedOut.style.display = 'flex';
     authSentNote.style.display = 'none';
+    setCodeEntryVisible(false);
     authLoggedInNote.style.display = 'none';
     appContent.style.display = 'none';
     renderHistory([]);
@@ -858,11 +898,28 @@ async function refreshCreditBalance() {
 const creditsOverlay = document.getElementById('credits-overlay');
 const creditsModalError = document.getElementById('credits-modal-error');
 
+// Google Play's Payments policy wants Play Billing for anything consumed inside
+// the app, and this modal opens Stripe Checkout. So on Android there is no
+// purchase path at all: the button is removed and every caller — including the
+// 402 handler — falls through to a plain explanation instead.
+//
+// Hiding it from the first release is the whole point. It means no Android user
+// ever buys through Stripe, so there is no Android payer to disrupt if this is
+// revisited later; iDisagree reasoned the same way and it turned the one item
+// that could not be fixed after launch into a reversible decision.
 function openBuyCreditsModal() {
+  if (IS_NATIVE) {
+    setStatus('You are out of credits. Credits can be topped up on the Distillery website, from a browser.', true);
+    return;
+  }
   creditsModalError.style.display = 'none';
   creditsOverlay.style.display = 'flex';
 }
-document.getElementById('buy-credits-btn').addEventListener('click', openBuyCreditsModal);
+if (IS_NATIVE) {
+  document.getElementById('buy-credits-btn').remove();
+} else {
+  document.getElementById('buy-credits-btn').addEventListener('click', openBuyCreditsModal);
+}
 document.getElementById('credits-close-btn').addEventListener('click', function() { creditsOverlay.style.display = 'none'; });
 creditsOverlay.addEventListener('click', function(e) { if (e.target === creditsOverlay) creditsOverlay.style.display = 'none'; });
 document.addEventListener('keydown', function(e) {
@@ -877,7 +934,7 @@ document.querySelectorAll('.credits-pack-btn').forEach(function(btn) {
     try {
       const { data: { session } } = await supabaseClient.auth.getSession();
       if (!session) throw new Error('Please sign in first.');
-      const origin = window.location.origin + window.location.pathname;
+      const origin = publicAppUrl();
       const resp = await fetch(WORKER_URL + '/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
@@ -937,16 +994,98 @@ document.getElementById('auth-send-btn').addEventListener('click', async functio
   if (!email) { alert('Please enter your email address.'); return; }
   const { error } = await supabaseClient.auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: window.location.origin + window.location.pathname }
+    options: { emailRedirectTo: publicAppUrl() }
   });
   if (error) { alert('Error: ' + error.message); return; }
   authLoggedOut.style.display = 'none';
   authSentNote.style.display = 'block';
+  setCodeEntryVisible(true);
+  authCodeInput.focus();
 });
+
+// Sign in with the 6-digit code from the same email as the magic link.
+//
+// This is not a convenience — it is the ONLY way to sign in on Android. A magic
+// link has to redirect somewhere, and the WebView's origin is https://localhost,
+// which no email client can reach; sending the link to the real site instead
+// signs the user into the WEBSITE, not the app. A code carries no redirect, so
+// it works identically in both. iDisagree hit this and switched the same way.
+//
+// Supabase sends the code whenever the "Magic Link" email template contains
+// {{ .Token }}. Keeping {{ .ConfirmationURL }} alongside it means the email
+// carries both, so nothing changes for web users or for the other app sharing
+// this Supabase project.
+const authCodeRow = document.getElementById('auth-code-row');
+const authCodeInput = document.getElementById('auth-code');
+const authCodeError = document.getElementById('auth-code-error');
+
+// Queries the DOM per call rather than closing over the consts above: setAuthUI
+// calls this and is defined ~120 lines earlier, so a const would be in the
+// temporal dead zone if anything ever calls setAuthUI synchronously at load.
+function setCodeEntryVisible(visible) {
+  const row = document.getElementById('auth-code-row');
+  const err = document.getElementById('auth-code-error');
+  const input = document.getElementById('auth-code');
+  if (!row) return;
+  row.style.display = visible ? 'flex' : 'none';
+  err.style.display = 'none';
+  if (!visible) input.value = '';
+}
+
+async function submitAuthCode() {
+  const email = document.getElementById('auth-email').value.trim();
+  const token = authCodeInput.value.trim();
+  if (!token) { authCodeError.textContent = 'Enter the code from your email.'; authCodeError.style.display = 'block'; return; }
+  const btn = document.getElementById('auth-code-btn');
+  btn.disabled = true;
+  authCodeError.style.display = 'none';
+  try {
+    const { error } = await supabaseClient.auth.verifyOtp({ email, token, type: 'email' });
+    // No success branch on purpose: onAuthStateChange drives setAuthUI, so the
+    // UI updates through the same path a magic link takes.
+    if (error) {
+      authCodeError.textContent = error.message || 'That code was not accepted.';
+      authCodeError.style.display = 'block';
+    }
+  } catch (e) {
+    authCodeError.textContent = e.message || 'That code was not accepted.';
+    authCodeError.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+document.getElementById('auth-code-btn').addEventListener('click', submitAuthCode);
+authCodeInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') submitAuthCode(); });
 
 document.getElementById('auth-signout-btn').addEventListener('click', function() {
   supabaseClient.auth.signOut();
 });
+
+// ---- Android hardware back button ----
+// Without this the back button closes the app outright from anywhere, including
+// with a modal open, which reads as a crash. Order matters: dismiss whatever is
+// layered on top first, then leave the app only from the base screen.
+if (IS_NATIVE && CAP.Plugins && CAP.Plugins.App) {
+  CAP.Plugins.App.addListener('backButton', function() {
+    if (creditsOverlay && creditsOverlay.style.display !== 'none') {
+      creditsOverlay.style.display = 'none'; return;
+    }
+    const about = document.getElementById('about-overlay');
+    if (about && about.style.display !== 'none' && about.style.display !== '') {
+      about.style.display = 'none'; return;
+    }
+    const dropdown = document.getElementById('settings-dropdown');
+    if (dropdown && dropdown.style.display !== 'none') {
+      dropdown.style.display = 'none'; return;
+    }
+    const active = document.querySelector('.tab-btn.active');
+    if (active && active.dataset.tab !== 'analyze') {
+      activateTab('analyze'); return;
+    }
+    CAP.Plugins.App.exitApp();
+  });
+}
 
 async function claudeRequest(body) {
   const { data: { session } } = await supabaseClient.auth.getSession();
@@ -1226,10 +1365,15 @@ function showResult(title, meta, text) {
   document.getElementById('results-meta').textContent = meta;
   document.getElementById('output').innerHTML = marked.parse(text);
   results.className = 'visible';
-  document.getElementById('copy-btn').onclick = function() {
-    navigator.clipboard.writeText(text)  // copies raw markdown, ready to paste into Reddit
-      .then(() => { this.textContent = 'Copied!'; setTimeout(() => { this.textContent = 'Copy'; }, 2000); })
-      .catch(() => alert('Copy failed — select text manually'));
+  document.getElementById('copy-btn').onclick = async function() {
+    // copies raw markdown, ready to paste into Reddit
+    const btn = this;
+    if (await copyText(text)) {
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+    } else {
+      alert('Copy failed — select text manually');
+    }
   };
 }
 
@@ -1543,15 +1687,15 @@ function escapeHtml(s) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-document.getElementById('yt-copy-btn').addEventListener('click', function() {
+document.getElementById('yt-copy-btn').addEventListener('click', async function() {
   const text = currentTranscriptEntries.map(function(e) { return '[' + e.time + '] ' + e.text; }).join('\n');
-  navigator.clipboard.writeText(text)
-    .then(function() {
-      var b = document.getElementById('yt-copy-btn');
-      b.textContent = 'Copied!';
-      setTimeout(function() { b.textContent = 'Copy'; }, 2000);
-    })
-    .catch(function() { alert('Copy failed — select text manually'); });
+  const b = document.getElementById('yt-copy-btn');
+  if (await copyText(text)) {
+    b.textContent = 'Copied!';
+    setTimeout(function() { b.textContent = 'Copy'; }, 2000);
+  } else {
+    alert('Copy failed — select text manually');
+  }
 });
 
 document.getElementById('yt-analyze-btn').addEventListener('click', analyzeTranscript);
