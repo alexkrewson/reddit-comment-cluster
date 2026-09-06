@@ -158,6 +158,22 @@ fixed path, so the next rename has to be deep before it breaks. If it ever does,
 Mixes (`list=RD…`) are rejected with a clear message: they are generated per
 viewer and have no fixed membership to enumerate.
 
+### The transcriber returns intermittent 500s, and that is expected
+
+`/api/fetch` fails perhaps a third of the time with a `www.google.com/sorry`
+URL and `too many 429 error responses`. **This is not a broken video and not a
+broken deploy.** Webshare hands out rotating residential IPs, YouTube
+rate-limits some of them at any moment, and the next attempt draws a different
+IP. Confirmed live in September 2026: two videos from the same playlist
+requested back to back gave one block and one complete transcript.
+
+Playlist mode therefore retries a failed video up to 3 times with a short
+backoff, and **only on a 5xx**. A 4xx is a real answer — captions disabled, or
+no transcript exists — and retrying it just wastes proxy budget.
+
+The single-video path has no such retry, so it still shows the raw error on an
+unlucky draw and works on a second click. Worth fixing there too if it annoys.
+
 ---
 
 ## Cloudflare Worker deployment

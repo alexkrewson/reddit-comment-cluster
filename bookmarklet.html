@@ -1849,6 +1849,42 @@ function runPool(items, limit, worker) {
   return Promise.all(runners);
 }
 
+// The transcriber reaches YouTube through a pool of rotating residential IPs,
+// and some of those IPs are rate-limited by YouTube at any given moment. That
+// surfaces as a 500 and it is transient: the very next attempt draws a
+// different IP and usually succeeds. Verified live -- consecutive requests for
+// two videos from the same playlist gave one block and one full transcript.
+//
+// Without this a long playlist would mark a scattering of perfectly good
+// videos as failed, which is worse than slow. A 4xx is the honest kind of
+// failure (captions disabled, none found) and is never retried.
+const PLAYLIST_RETRIES = 3;
+
+async function fetchTranscriptWithRetry(videoId) {
+  const watchUrl = 'https://www.youtube.com/watch?v=' + videoId;
+  let lastError = 'unavailable';
+  for (let attempt = 0; attempt < PLAYLIST_RETRIES; attempt++) {
+    if (attempt > 0) {
+      // Give the proxy pool a moment to hand out a different IP.
+      await new Promise(function(r) { setTimeout(r, 700 * attempt); });
+    }
+    let resp;
+    try {
+      resp = await fetch(TRANSCRIBER_BASE + '/fetch?url=' + encodeURIComponent(watchUrl));
+    } catch (e) {
+      lastError = 'network error';
+      continue;
+    }
+    let data = {};
+    try { data = await resp.json(); } catch (e) { data = {}; }
+    if (resp.ok) return data.entries || [];
+    lastError = data.error || 'error ' + resp.status;
+    if (resp.status < 500) break;  // a real answer: no transcript exists
+    lastError = 'blocked, retrying';
+  }
+  throw new Error(lastError);
+}
+
 function playlistTranscriptText() {
   const counts = playlistCounts();
   const divider = '='.repeat(64);
@@ -1917,11 +1953,7 @@ async function fetchPlaylistTranscripts(url) {
       video.status = 'running';
       updatePlaylistRow(i);
       try {
-        const watchUrl = 'https://www.youtube.com/watch?v=' + video.videoId;
-        const r = await fetch(TRANSCRIBER_BASE + '/fetch?url=' + encodeURIComponent(watchUrl));
-        const d = await r.json();
-        if (!r.ok) throw new Error(d.error || 'error ' + r.status);
-        video.entries = d.entries || [];
+        video.entries = await fetchTranscriptWithRetry(video.videoId);
         video.status = 'ok';
       } catch (e) {
         // One video without captions must not sink the run — record it on the
