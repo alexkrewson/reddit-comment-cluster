@@ -302,6 +302,63 @@
     flex-shrink: 0;
     min-width: 36px;
   }
+  /* --- Playlist mode: one row per video, each row its own success/failure.
+     A playlist run is partly-successful far more often than not (captions
+     get disabled per video), so the list has to show which ones landed
+     rather than reporting a single verdict for the whole batch. --- */
+  #playlist-box {
+    display: none;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 16px;
+  }
+  #playlist-box.visible { display: block; }
+  .playlist-rows {
+    max-height: 320px;
+    overflow-y: auto;
+    padding: 6px 14px 10px;
+  }
+  .playlist-row {
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
+    padding: 4px 0;
+    font-size: 0.85rem;
+    line-height: 1.45;
+    border-bottom: 1px solid var(--border);
+  }
+  .playlist-row:last-child { border-bottom: none; }
+  .playlist-row-num {
+    color: var(--text-tertiary);
+    font-size: 0.7rem;
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+    min-width: 28px;
+    text-align: right;
+  }
+  .playlist-row-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .playlist-row-status {
+    flex-shrink: 0;
+    font-size: 0.7rem;
+    color: var(--text-tertiary);
+    white-space: nowrap;
+  }
+  .playlist-row--ok .playlist-row-status { color: var(--success-text); }
+  .playlist-row--failed .playlist-row-status { color: var(--danger-text); }
+  .playlist-row--failed .playlist-row-title { color: var(--text-secondary); }
+  .playlist-note {
+    padding: 0 14px 10px;
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+  }
   /* --- Tab bar (shared best-practices tab-bar recipe) --- */
   .tab-bar {
     display: flex;
@@ -503,7 +560,7 @@
 <div class="top-row">
   <div>
     <h1>Distillery</h1>
-    <p class="subtitle">Paste a Reddit post URL to cluster comment points, a username to profile a user, a subreddit to check its vibe, or a YouTube URL to fetch and analyze a transcript.</p>
+    <p class="subtitle">Paste a Reddit post URL to cluster comment points, a username to profile a user, a subreddit to check its vibe, or a YouTube URL to fetch and analyze a transcript — or a playlist URL to download every transcript in it.</p>
   </div>
   <div class="settings-wrap">
     <button id="settings-btn" class="icon-btn" title="Settings" aria-label="Settings">⚙️</button>
@@ -546,7 +603,7 @@
         Help <span class="settings-section-chevron">▾</span>
       </button>
       <div class="settings-section-body" data-section-body="help" style="display:none">
-        <p class="help-text">Sign in above first, then paste a Reddit post URL, a username, or a subreddit, or a YouTube URL for a transcript. See About for details on each tool.</p>
+        <p class="help-text">Sign in above first, then paste a Reddit post URL, a username, or a subreddit, or a YouTube video or playlist URL for transcripts. See About for details on each tool.</p>
       </div>
 
     </div>
@@ -588,6 +645,7 @@
         <section id="about-youtube">
           <h2>YouTube Transcripts</h2>
           <p>Paste a YouTube URL to fetch its transcript (with timestamps) and real video title. From there you can copy the raw transcript or send it to Claude for a summary, key points, and notable quotes.</p>
+          <p>Paste a <strong>playlist</strong> URL (<code>youtube.com/playlist?list=…</code>) and every video in it is fetched instead, one row per video, with a single Copy All or Download All at the end. Bulk playlist fetching is a download only — it uses no AI credits, and there is no Analyze button on it. Videos with captions turned off are marked unavailable and the rest still come through. YouTube Mixes can't be fetched: they're generated per viewer and have no fixed list of videos.</p>
         </section>
         <section id="about-raw">
           <h2>Raw Data Downloads</h2>
@@ -651,7 +709,7 @@
   <button id="download-subreddit-btn" class="secondary" aria-label="Download Raw Data"><span class="btn-icon" aria-hidden="true">⬇</span><span class="btn-label">Download Raw Data</span></button>
   <button id="subreddit-btn" class="primary" aria-label="Check Vibe"><span class="btn-icon" aria-hidden="true">📊</span><span class="btn-label">Check Vibe</span></button>
 
-  <input id="yt-input" type="url" placeholder="Paste YouTube URL here…" autocomplete="off" autocorrect="off" spellcheck="false">
+  <input id="yt-input" type="url" placeholder="Paste YouTube video or playlist URL here…" autocomplete="off" autocorrect="off" spellcheck="false">
   <button id="yt-fetch-btn" class="primary" aria-label="Get Transcript"><span class="btn-icon" aria-hidden="true">⬇</span><span class="btn-label">Get Transcript</span></button>
 </div>
 
@@ -664,6 +722,18 @@
     </div>
   </div>
   <div class="transcript-entries" id="transcript-entries"></div>
+</div>
+
+<div id="playlist-box">
+  <div class="transcript-toolbar">
+    <span class="transcript-meta" id="playlist-meta"></span>
+    <div class="transcript-toolbar-btns">
+      <button class="secondary" id="playlist-copy-btn">Copy All</button>
+      <button class="primary" id="playlist-download-btn">Download All</button>
+    </div>
+  </div>
+  <div class="playlist-rows" id="playlist-rows"></div>
+  <p class="playlist-note" id="playlist-note" style="display:none"></p>
 </div>
 
 <div id="status"></div>
@@ -1140,7 +1210,7 @@ async function loadHistory() {
   renderHistory(data || []);
 }
 
-const TYPE_LABELS = { reddit_post: 'Post', reddit_user: 'User', subreddit_vibe: 'Vibe Check', youtube_transcript: 'Transcript', youtube_analysis: 'YT Analysis' };
+const TYPE_LABELS = { reddit_post: 'Post', reddit_user: 'User', subreddit_vibe: 'Vibe Check', youtube_transcript: 'Transcript', youtube_analysis: 'YT Analysis', youtube_playlist: 'Playlist' };
 
 function renderHistory(items) {
   const list = document.getElementById('history-list');
@@ -1625,8 +1695,30 @@ subredditInput.addEventListener('keydown', function(e) {
 const ytInput = document.getElementById('yt-input');
 const ytFetchBtn = document.getElementById('yt-fetch-btn');
 const transcriptBox = document.getElementById('transcript-box');
+const playlistBox = document.getElementById('playlist-box');
 let currentTranscriptEntries = [];
 let currentVideoTitle = '';
+let currentPlaylist = null;
+
+const TRANSCRIBER_BASE = 'https://transcriber-alexkrewson-6940s-projects.vercel.app/api';
+
+// Playlists are fetched one video at a time against the transcriber, which
+// reaches YouTube through a rotating residential proxy. Three at once keeps a
+// long playlist moving without handing YouTube a burst that looks worth
+// blocking; the proxy is the shared resource here, not the browser.
+const PLAYLIST_CONCURRENCY = 3;
+
+// What the pasted URL is asking for. A /playlist URL means the playlist. A
+// watch URL means that video even when it carries a list= (which it does for
+// every video opened from inside a playlist) -- clicking a video and being
+// handed 200 transcripts would be a surprise, so that case only gets a hint.
+function classifyYoutubeUrl(raw) {
+  var listMatch = raw.match(/[?&]list=([A-Za-z0-9_-]+)/);
+  var listId = listMatch ? listMatch[1] : null;
+  var hasVideo = /[?&]v=[A-Za-z0-9_-]{11}/.test(raw) || /youtu\.be\/[A-Za-z0-9_-]{11}/.test(raw);
+  if (listId && !hasVideo) return { mode: 'playlist', listId: listId };
+  return { mode: 'video', listId: listId };
+}
 
 // Fallback history title for any identifier we can't resolve a real title for:
 // strips the protocol, trims trailing slash, and truncates to a reasonable length.
@@ -1652,13 +1744,16 @@ async function fetchYoutubeTranscript() {
   const url = ytInput.value.trim();
   if (!url) { setStatus('Please paste a YouTube URL.', true); return; }
 
+  if (classifyYoutubeUrl(url).mode === 'playlist') { return fetchPlaylistTranscripts(url); }
+
   ytFetchBtn.disabled = true;
   transcriptBox.className = '';
+  playlistBox.className = '';
   results.className = '';
 
   try {
     setStatus('Fetching transcript…');
-    const resp = await fetch('https://transcriber-alexkrewson-6940s-projects.vercel.app/api/fetch?url=' + encodeURIComponent(url));
+    const resp = await fetch(TRANSCRIBER_BASE + '/fetch?url=' + encodeURIComponent(url));
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.error || 'API error ' + resp.status);
 
@@ -1670,7 +1765,13 @@ async function fetchYoutubeTranscript() {
 
     document.getElementById('yt-analyze-btn').style.display = '';
     transcriptBox.className = 'visible';
-    clearStatus();
+    // A video opened from inside a playlist carries list= too. It got the one
+    // transcript it asked for; say where the other 200 are rather than guessing.
+    if (classifyYoutubeUrl(url).listId) {
+      setStatus('Fetched this video. For every video in its playlist, paste the playlist URL (youtube.com/playlist?list=…).');
+    } else {
+      clearStatus();
+    }
 
     currentVideoTitle = await fetchYoutubeTitle(url);
     const transcriptText = data.entries.map(function(e) { return '[' + e.time + '] ' + e.text; }).join('\n');
@@ -1686,6 +1787,196 @@ async function fetchYoutubeTranscript() {
 function escapeHtml(s) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
+
+// ---- Playlist mode -------------------------------------------------------
+// Enumerate a playlist, then pull every transcript. No Claude call anywhere in
+// here: this is a bulk download, so it costs no credits and needs no sign-in
+// beyond what saving to history already requires.
+
+const playlistRowsEl = document.getElementById('playlist-rows');
+const playlistMetaEl = document.getElementById('playlist-meta');
+const playlistNoteEl = document.getElementById('playlist-note');
+const playlistCopyBtn = document.getElementById('playlist-copy-btn');
+const playlistDownloadBtn = document.getElementById('playlist-download-btn');
+
+const PLAYLIST_ROW_STATUS = { pending: 'waiting', running: 'fetching…', ok: '', failed: '' };
+
+function renderPlaylistRows() {
+  playlistRowsEl.innerHTML = currentPlaylist.videos.map(function(v, i) {
+    return '<div class="playlist-row" data-i="' + i + '">' +
+      '<span class="playlist-row-num">' + (i + 1) + '</span>' +
+      '<span class="playlist-row-title">' + escapeHtml(v.title || v.videoId) + '</span>' +
+      '<span class="playlist-row-status">' + PLAYLIST_ROW_STATUS.pending + '</span>' +
+      '</div>';
+  }).join('');
+}
+
+// Rows are updated in place rather than re-rendered: a 200-video playlist
+// finishes 200 times, and rebuilding the whole list each time would throw away
+// the user's scroll position on every completion.
+function updatePlaylistRow(i) {
+  const v = currentPlaylist.videos[i];
+  const row = playlistRowsEl.querySelector('.playlist-row[data-i="' + i + '"]');
+  if (!row) return;
+  row.className = 'playlist-row' + (v.status === 'ok' ? ' playlist-row--ok' : v.status === 'failed' ? ' playlist-row--failed' : '');
+  let label = PLAYLIST_ROW_STATUS[v.status] || '';
+  if (v.status === 'ok') label = v.entries.length + ' entries';
+  if (v.status === 'failed') label = v.error || 'no transcript';
+  row.querySelector('.playlist-row-status').textContent = label;
+}
+
+function playlistCounts() {
+  let ok = 0, failed = 0;
+  currentPlaylist.videos.forEach(function(v) {
+    if (v.status === 'ok') ok++;
+    else if (v.status === 'failed') failed++;
+  });
+  return { ok: ok, failed: failed, total: currentPlaylist.videos.length };
+}
+
+// Run `worker` over every item with at most `limit` in flight. Promise.all on
+// the whole list would open one request per video at once; a pool keeps the
+// pressure on the transcriber's proxy constant regardless of playlist length.
+function runPool(items, limit, worker) {
+  let next = 0;
+  function pump() {
+    if (next >= items.length) return Promise.resolve();
+    const i = next++;
+    return worker(items[i], i).then(pump);
+  }
+  const runners = [];
+  for (let i = 0; i < Math.min(limit, items.length); i++) runners.push(pump());
+  return Promise.all(runners);
+}
+
+function playlistTranscriptText() {
+  const counts = playlistCounts();
+  const divider = '='.repeat(64);
+  const head = [
+    '# ' + currentPlaylist.title,
+    currentPlaylist.url,
+    counts.ok + ' of ' + counts.total + ' videos had a transcript',
+    '',
+  ].join('\n');
+
+  const bodies = currentPlaylist.videos.map(function(v, i) {
+    const header = [
+      divider,
+      (i + 1) + '. ' + (v.title || v.videoId),
+      'https://www.youtube.com/watch?v=' + v.videoId,
+      divider,
+      '',
+    ].join('\n');
+    const body = v.status === 'ok'
+      ? v.entries.map(function(e) { return '[' + e.time + '] ' + e.text; }).join('\n')
+      : '(no transcript — ' + (v.error || 'unavailable') + ')';
+    return header + body;
+  });
+
+  return head + '\n' + bodies.join('\n\n') + '\n';
+}
+
+async function fetchPlaylistTranscripts(url) {
+  ytFetchBtn.disabled = true;
+  transcriptBox.className = '';
+  playlistBox.className = '';
+  results.className = '';
+  playlistNoteEl.style.display = 'none';
+  playlistCopyBtn.disabled = true;
+  playlistDownloadBtn.disabled = true;
+
+  try {
+    setStatus('Reading playlist…');
+    const resp = await fetch(TRANSCRIBER_BASE + '/playlist?url=' + encodeURIComponent(url));
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'API error ' + resp.status);
+    if (!data.videos || !data.videos.length) throw new Error('That playlist has no videos to fetch.');
+
+    currentPlaylist = {
+      title: data.playlistTitle || 'YouTube Playlist',
+      url: url,
+      videos: data.videos.map(function(v) {
+        return { videoId: v.videoId, title: v.title, status: 'pending', entries: [], error: '' };
+      }),
+    };
+
+    const notes = [];
+    if (data.skipped) notes.push(data.skipped + ' private or deleted ' + (data.skipped === 1 ? 'video was' : 'videos were') + ' skipped.');
+    if (data.truncated) notes.push('Only the first ' + currentPlaylist.videos.length + ' videos were taken — this playlist is longer.');
+    if (notes.length) {
+      playlistNoteEl.textContent = notes.join(' ');
+      playlistNoteEl.style.display = '';
+    }
+
+    renderPlaylistRows();
+    playlistMetaEl.textContent = currentPlaylist.title + ' — 0 of ' + currentPlaylist.videos.length;
+    playlistBox.className = 'visible';
+
+    let done = 0;
+    await runPool(currentPlaylist.videos, PLAYLIST_CONCURRENCY, async function(video, i) {
+      video.status = 'running';
+      updatePlaylistRow(i);
+      try {
+        const watchUrl = 'https://www.youtube.com/watch?v=' + video.videoId;
+        const r = await fetch(TRANSCRIBER_BASE + '/fetch?url=' + encodeURIComponent(watchUrl));
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || 'error ' + r.status);
+        video.entries = d.entries || [];
+        video.status = 'ok';
+      } catch (e) {
+        // One video without captions must not sink the run — record it on the
+        // row and keep going. Partial results are the normal outcome here.
+        video.status = 'failed';
+        video.error = String(e.message || e).slice(0, 60);
+      }
+      done++;
+      updatePlaylistRow(i);
+      const counts = playlistCounts();
+      playlistMetaEl.textContent = currentPlaylist.title + ' — ' + counts.ok + ' of ' + counts.total;
+      setStatus('Fetching transcripts… ' + done + ' of ' + counts.total);
+    });
+
+    const counts = playlistCounts();
+    playlistMetaEl.textContent = currentPlaylist.title + ' — ' + counts.ok + ' of ' + counts.total + ' transcripts';
+
+    if (!counts.ok) {
+      setStatus('No transcripts available for any video in that playlist.', true);
+      return;
+    }
+
+    playlistCopyBtn.disabled = false;
+    playlistDownloadBtn.disabled = false;
+    setStatus('Done — ' + counts.ok + ' of ' + counts.total + ' transcripts fetched' + (counts.failed ? ' (' + counts.failed + ' unavailable)' : '') + '.');
+
+    saveAnalysis(
+      'youtube_playlist',
+      url,
+      currentPlaylist.title,
+      counts.ok + ' of ' + counts.total + ' transcripts',
+      playlistTranscriptText()
+    ).then(loadHistory);
+
+  } catch (e) {
+    setStatus('Error: ' + e.message, true);
+  } finally {
+    ytFetchBtn.disabled = false;
+  }
+}
+
+playlistCopyBtn.addEventListener('click', async function() {
+  if (!currentPlaylist) return;
+  if (await copyText(playlistTranscriptText())) {
+    playlistCopyBtn.textContent = 'Copied!';
+    setTimeout(function() { playlistCopyBtn.textContent = 'Copy All'; }, 2000);
+  } else {
+    setStatus('Copy failed — use Download All instead.', true);
+  }
+});
+
+playlistDownloadBtn.addEventListener('click', function() {
+  if (!currentPlaylist) return;
+  downloadTextFile(slugify(currentPlaylist.title) + '-transcripts.txt', playlistTranscriptText());
+});
 
 document.getElementById('yt-copy-btn').addEventListener('click', async function() {
   const text = currentTranscriptEntries.map(function(e) { return '[' + e.time + '] ' + e.text; }).join('\n');

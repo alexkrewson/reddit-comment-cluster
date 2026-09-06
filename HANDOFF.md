@@ -4,7 +4,7 @@
 
 ## What this app is
 
-A single-page web app that analyzes Reddit posts, Reddit users, subreddits (Vibe Check), and YouTube transcripts using Claude, with tabbed Analyze/History UI, a consolidated Settings menu (Account/Themes/About/Help), and token-based credits for AI analysis (raw data downloads stay free). Lives at:
+A single-page web app that analyzes Reddit posts, Reddit users, subreddits (Vibe Check), and YouTube transcripts using Claude — and bulk-downloads every transcript in a YouTube playlist — with tabbed Analyze/History UI, a consolidated Settings menu (Account/Themes/About/Help), and token-based credits for AI analysis (raw data downloads stay free). Lives at:
 
 **https://alexkrewson.github.io/reddit-comment-cluster/bookmarklet.html**
 
@@ -39,11 +39,15 @@ The only file that matters for the frontend is `bookmarklet.html` in the root of
 
 Every successful analysis is saved to a Supabase `analyses` table and shown in a "Recent analyses" list when logged in. Clicking any entry replays the result instantly.
 
-**Four saved types:**
+**Five saved types:**
 - `reddit_post` — Claude analysis of a Reddit post's comments
 - `reddit_user` — Claude analysis of a Reddit user profile
 - `youtube_transcript` — raw transcript fetched from the transcriber service
 - `youtube_analysis` — Claude analysis of a YouTube transcript
+- `youtube_playlist` — every transcript in a playlist, concatenated (no Claude call)
+
+`type` is a plain `text` column with no CHECK constraint, so adding a type needs
+no migration — `youtube_playlist` was added in September 2026 without one.
 
 ### Supabase table (must exist — run once in SQL Editor)
 
@@ -120,10 +124,39 @@ If Reddit returns 403s: the credentials may have expired. Go to `reddit.com/pref
 
 ## YouTube transcripts
 
-Fetched from a separate Vercel service:
-`https://transcriber-alexkrewson-6940s-projects.vercel.app/api/fetch?url=...`
+Fetched from a separate Vercel service (repo: `../transcriber`):
+
+- `…/api/fetch?url=…` — one video's transcript
+- `…/api/playlist?url=…` — the video list for a playlist (`&max=` caps it,
+  default 200, hard ceiling 500)
 
 This is a separate project — if transcripts stop working, check that service first.
+
+### Playlists (added September 2026)
+
+Paste a `youtube.com/playlist?list=…` URL and Distillery fetches every
+transcript in it, three at a time, then offers one Copy All / Download All.
+It makes **no Claude call at all** — bulk playlist fetching is a download, so
+it costs no credits and has no Analyze button.
+
+A watch URL carrying `list=` (what you get clicking a video *inside* a
+playlist) still fetches just that video, and says where the rest are. Treating
+it as a playlist would turn one click into 200 fetches.
+
+**There is still no YouTube Data API key anywhere, deliberately.**
+`api/playlist.py` enumerates the playlist by loading the ordinary playlist page
+through the Webshare residential proxy the transcript path already uses, and
+reading the video IDs out of the page's embedded `ytInitialData`. That trades a
+Google Cloud project and a key for a dependency on YouTube's page shape — which
+does move: as of September 2026 the page ships `lockupViewModel` /
+`continuationItemViewModel` / `playlistHeaderRenderer`, where it used to ship
+`playlistVideoRenderer` / `continuationItemRenderer` / `playlistMetadataRenderer`.
+The parser reads **both** shapes and searches for them rather than walking a
+fixed path, so the next rename has to be deep before it breaks. If it ever does,
+`playlistItems.list` from the Data API replaces that one file.
+
+Mixes (`list=RD…`) are rejected with a clear message: they are generated per
+viewer and have no fixed membership to enumerate.
 
 ---
 
