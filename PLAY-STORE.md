@@ -65,7 +65,7 @@ green build:
 
 1. The account-deletion feature (see the next section — this is the real risk).
 2. Hosting: Cloudflare Pages project + `distillery.trolleysolution.com`.
-3. Supabase: `{{ .Token }}` in the email template, and the redirect allow-list.
+3. Supabase: the redirect allow-list. (Sign-in codes are done.)
 4. The upload keystore.
 5. Store assets: icon, feature graphic, screenshots, listing copy.
 6. Play Console setup, then the AAB, then testers.
@@ -135,9 +135,13 @@ once there is something to verify.
   not in the redirect allow-list, so Supabase fell back to the project's Site
   URL and the link opened **packing_list**. packing_list signs in with passwords
   and never sends this template, so code-only costs it nothing.
-- **Still to do: add `{{ .Token }}` to the Confirm signup template too**, keeping
-  its link. A brand-new address signing in to Distillery gets *that* template,
-  not Magic Link, and packing_list's password signups use it as well.
+- **The Confirm signup template carries `{{ .Token }}` too** (added 2026-09-26),
+  below its existing link, which stays. A brand-new address signing in to
+  Distillery gets *that* template, not Magic Link, and packing_list's password
+  signups use it as well, so the link cannot go.
+- **Code length is 6** (Auth → Email provider → Email OTP Length; was 8). The
+  app's field accepts up to 8, so changing it back would not break sign-in, only
+  the "6-digit" wording.
 - **Add `https://distillery.trolleysolution.com/**` to the redirect allow-list**
   (Authentication → URL Configuration), alongside the existing entries.
 - Custom SMTP is already configured on this project via Resend. **Warm the
