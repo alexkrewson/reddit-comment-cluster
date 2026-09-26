@@ -118,12 +118,17 @@ once there is something to verify.
 
 ## 2. Supabase
 
-- **Add `{{ .Token }}` to the Magic Link email template** (Auth → Email
-  Templates). Without it no one can sign in to the Android app at all: a magic
-  link has to redirect somewhere, and the WebView's origin is `https://localhost`.
-  Keep `{{ .ConfirmationURL }}` alongside it so the email carries both — that
-  way nothing changes for web users or for packing_list, which shares this
-  project's auth.
+- **The Magic Link email template is code-only: `{{ .Token }}`, no link**
+  (Auth → Email Templates; changed 2026-09-26). Without the code no one can sign
+  in to the Android app at all: a magic link has to redirect somewhere, and the
+  WebView's origin is `https://localhost`. The link was dropped rather than kept
+  alongside because it was actively wrong: `distillery.trolleysolution.com` is
+  not in the redirect allow-list, so Supabase fell back to the project's Site
+  URL and the link opened **packing_list**. packing_list signs in with passwords
+  and never sends this template, so code-only costs it nothing.
+- **Still to do: add `{{ .Token }}` to the Confirm signup template too**, keeping
+  its link. A brand-new address signing in to Distillery gets *that* template,
+  not Magic Link, and packing_list's password signups use it as well.
 - **Add `https://distillery.trolleysolution.com/**` to the redirect allow-list**
   (Authentication → URL Configuration), alongside the existing entries.
 - Custom SMTP is already configured on this project via Resend. **Warm the

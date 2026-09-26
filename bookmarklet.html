@@ -111,6 +111,11 @@
   .settings-section-chevron { font-size: 0.6rem; transition: transform 0.15s ease; }
   .settings-section-chevron--open { transform: rotate(180deg); }
   .settings-section-body { padding: 0.25rem 0.5rem 0.6rem; }
+  /* The dropdown is 260px. Input and button side by side don't fit (a flex
+     input won't shrink below its intrinsic width), so the button was pushed out
+     past the dropdown's right edge. Stack them instead. */
+  .settings-section-body .input-row { flex-direction: column; }
+  .settings-section-body .input-row input { min-width: 0; }
   .settings-section-body + .settings-section-toggle { border-top: 1px solid var(--border); margin-top: 0.25rem; padding-top: 0.6rem; }
   .settings-user-email { font-size: 0.75rem; color: var(--text-secondary); padding: 0.2rem 0; word-break: break-all; }
   .theme-option {
@@ -572,9 +577,9 @@
       <div class="settings-section-body" data-section-body="account" style="display:none">
         <div id="auth-logged-out" class="input-row" style="display:none; margin-bottom:0;">
           <input id="auth-email" type="email" placeholder="Email address" autocomplete="email" spellcheck="false">
-          <button id="auth-send-btn" class="primary">Send magic link</button>
+          <button id="auth-send-btn" class="primary">Email me a code</button>
         </div>
-        <p id="auth-sent-note" class="help-text" style="display:none;">Check your email — click the link, or type the 6-digit code below.</p>
+        <p id="auth-sent-note" class="help-text" style="display:none;">Check your email for a 6-digit code and type it below.</p>
         <div id="auth-code-row" class="input-row" style="display:none; margin-bottom:0; margin-top:6px;">
           <input id="auth-code" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="6-digit code" spellcheck="false" maxlength="8">
           <button id="auth-code-btn" class="primary">Sign in</button>
@@ -628,7 +633,7 @@
       <div class="about-scroll" id="about-scroll">
         <section id="about-overview">
           <h2>Overview</h2>
-          <p>Distillery uses Claude to make sense of Reddit threads, Reddit users, subreddit culture, and YouTube transcripts. Sign in with a magic link (top right, under Account) to unlock every tool — AI analysis, raw data downloads, and your history are all tied to your account.</p>
+          <p>Distillery uses Claude to make sense of Reddit threads, Reddit users, subreddit culture, and YouTube transcripts. Sign in with an emailed code (top right, under Account) to unlock every tool — AI analysis, raw data downloads, and your history are all tied to your account.</p>
         </section>
         <section id="about-post">
           <h2>Post Analysis</h2>
@@ -657,7 +662,7 @@
         </section>
         <section id="about-privacy">
           <h2>Privacy &amp; Data</h2>
-          <p>Reddit and YouTube data is fetched through a Cloudflare Worker that also proxies Claude calls — your Anthropic usage never touches the browser directly. Signing in uses Supabase magic-link auth; saved history is private to your account via row-level security.</p>
+          <p>Reddit and YouTube data is fetched through a Cloudflare Worker that also proxies Claude calls — your Anthropic usage never touches the browser directly. Signing in uses a one-time code emailed by Supabase; saved history is private to your account via row-level security.</p>
         </section>
       </div>
     </div>
@@ -1073,7 +1078,7 @@ document.getElementById('auth-send-btn').addEventListener('click', async functio
   authCodeInput.focus();
 });
 
-// Sign in with the 6-digit code from the same email as the magic link.
+// Sign in with the 6-digit code emailed by signInWithOtp. Codes, not links.
 //
 // This is not a convenience — it is the ONLY way to sign in on Android. A magic
 // link has to redirect somewhere, and the WebView's origin is https://localhost,
@@ -1081,10 +1086,12 @@ document.getElementById('auth-send-btn').addEventListener('click', async functio
 // signs the user into the WEBSITE, not the app. A code carries no redirect, so
 // it works identically in both. iDisagree hit this and switched the same way.
 //
-// Supabase sends the code whenever the "Magic Link" email template contains
-// {{ .Token }}. Keeping {{ .ConfirmationURL }} alongside it means the email
-// carries both, so nothing changes for web users or for the other app sharing
-// this Supabase project.
+// Supabase puts the code in the email via {{ .Token }}. The "Magic Link"
+// template carries ONLY the code: packing_list, which shares this project's
+// auth, signs in with passwords and never sends that template, and a link there
+// had been landing people on packing_list (the project's Site URL). A brand-new
+// address gets the "Confirm signup" template instead, which packing_list does
+// use -- that one keeps its link and has {{ .Token }} added alongside.
 const authCodeRow = document.getElementById('auth-code-row');
 const authCodeInput = document.getElementById('auth-code');
 const authCodeError = document.getElementById('auth-code-error');
@@ -1112,7 +1119,7 @@ async function submitAuthCode() {
   try {
     const { error } = await supabaseClient.auth.verifyOtp({ email, token, type: 'email' });
     // No success branch on purpose: onAuthStateChange drives setAuthUI, so the
-    // UI updates through the same path a magic link takes.
+    // UI updates through the same path any other sign-in takes.
     if (error) {
       authCodeError.textContent = error.message || 'That code was not accepted.';
       authCodeError.style.display = 'block';
