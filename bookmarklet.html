@@ -649,8 +649,8 @@
         </section>
         <section id="about-youtube">
           <h2>YouTube Transcripts</h2>
-          <p>Paste a YouTube URL to fetch its transcript (with timestamps) and real video title. From there you can copy the raw transcript or send it to Claude for a summary, key points, and notable quotes.</p>
-          <p>Paste a <strong>playlist</strong> URL (<code>youtube.com/playlist?list=…</code>) and every video in it is fetched instead, one row per video, with a single Copy All or Download All at the end. Bulk playlist fetching is a download only — it uses no AI credits, and there is no Analyze button on it. Videos with captions turned off are marked unavailable and the rest still come through. YouTube Mixes can't be fetched: they're generated per viewer and have no fixed list of videos.</p>
+          <p>Paste a YouTube URL and choose Get Transcript to fetch its transcript (with timestamps) and real video title, or Analyze Video to fetch it and send it straight to Claude for a summary, key points, and notable quotes.</p>
+          <p>Paste a <strong>playlist</strong> URL (<code>youtube.com/playlist?list=…</code>) and every video in it is fetched instead, one row per video, with a single Copy All or Download All at the end. Bulk playlist fetching is a download only — it uses no AI credits. Analyze Video works on one video at a time. Videos with captions turned off are marked unavailable and the rest still come through. YouTube Mixes can't be fetched: they're generated per viewer and have no fixed list of videos.</p>
         </section>
         <section id="about-raw">
           <h2>Raw Data Downloads</h2>
@@ -704,18 +704,19 @@
 <div class="row-form">
   <input id="url-input" type="url" placeholder="Paste Reddit post URL here…" autocomplete="off" autocorrect="off" spellcheck="false">
   <button id="download-post-btn" class="secondary" aria-label="Download Raw Data"><span class="btn-icon" aria-hidden="true">⬇</span><span class="btn-label">Download Raw Data</span></button>
-  <button id="analyze-btn" class="primary" aria-label="Analyze Post"><span class="btn-icon" aria-hidden="true">🔍</span><span class="btn-label">Analyze Post</span></button>
+  <button id="analyze-btn" class="primary" aria-label="Analyze Post"><span class="btn-icon" aria-hidden="true">📊</span><span class="btn-label">Analyze Post</span></button>
 
   <input id="user-input" type="text" placeholder="Reddit username or u/username…" autocomplete="off" autocorrect="off" spellcheck="false">
   <button id="download-user-btn" class="secondary" aria-label="Download Raw Data"><span class="btn-icon" aria-hidden="true">⬇</span><span class="btn-label">Download Raw Data</span></button>
-  <button id="user-btn" class="primary" aria-label="Analyze User"><span class="btn-icon" aria-hidden="true">🔍</span><span class="btn-label">Analyze User</span></button>
+  <button id="user-btn" class="primary" aria-label="Analyze User"><span class="btn-icon" aria-hidden="true">📊</span><span class="btn-label">Analyze User</span></button>
 
   <input id="subreddit-input" type="text" placeholder="Subreddit or r/subreddit…" autocomplete="off" autocorrect="off" spellcheck="false">
   <button id="download-subreddit-btn" class="secondary" aria-label="Download Raw Data"><span class="btn-icon" aria-hidden="true">⬇</span><span class="btn-label">Download Raw Data</span></button>
   <button id="subreddit-btn" class="primary" aria-label="Check Vibe"><span class="btn-icon" aria-hidden="true">📊</span><span class="btn-label">Check Vibe</span></button>
 
   <input id="yt-input" type="url" placeholder="Paste YouTube video or playlist URL here…" autocomplete="off" autocorrect="off" spellcheck="false">
-  <button id="yt-fetch-btn" class="primary" aria-label="Get Transcript"><span class="btn-icon" aria-hidden="true">⬇</span><span class="btn-label">Get Transcript</span></button>
+  <button id="yt-fetch-btn" class="secondary" aria-label="Get Transcript"><span class="btn-icon" aria-hidden="true">⬇</span><span class="btn-label">Get Transcript</span></button>
+  <button id="yt-row-analyze-btn" class="primary" aria-label="Analyze Video"><span class="btn-icon" aria-hidden="true">📊</span><span class="btn-label">Analyze Video</span></button>
 </div>
 
 <div id="transcript-box">
@@ -806,6 +807,36 @@ async function copyText(text) {
   } catch (e) {
     return false;
   }
+}
+
+// Android freezes a backgrounded app, which killed any run in flight when the
+// user switched apps. backgroundJob wraps a run in a native foreground service
+// (android/.../WorkService.java) for its duration and, if the app is not on
+// screen when it ends, posts a notification saying it finished or failed.
+// On the web, and on any build without the plugin, it is a pass-through.
+let activeJobs = 0;
+function backgroundJob(label, fn) {
+  return async function() {
+    const bw = IS_NATIVE && CAP.Plugins && CAP.Plugins.BackgroundWork;
+    if (!bw) return fn.apply(this, arguments);
+    if (activeJobs++ === 0) {
+      try { await bw.begin({ label: label + '…' }); } catch (e) { console.warn('BackgroundWork.begin:', e); }
+    }
+    try {
+      return await fn.apply(this, arguments);
+    } finally {
+      if (--activeJobs === 0) {
+        // A run reports failure through the status line, never by throwing, so
+        // that is where to read the outcome from.
+        const failed = status.classList.contains('visible') && status.classList.contains('error');
+        const shown = results.classList.contains('visible') && document.getElementById('results-title').textContent;
+        bw.end({
+          title: failed ? label + ' failed' : label + ' is ready',
+          body: failed ? status.textContent : (shown || 'Tap to open Distillery'),
+        }).catch(function(e) { console.warn('BackgroundWork.end:', e); });
+      }
+    }
+  };
 }
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -1426,6 +1457,8 @@ async function downloadPostRawData() {
   }
 }
 
+analyze = backgroundJob('Post analysis', analyze);
+downloadPostRawData = backgroundJob('Raw data', downloadPostRawData);
 btn.addEventListener('click', analyze);
 downloadBtn.addEventListener('click', downloadPostRawData);
 input.addEventListener('keydown', function(e) {
@@ -1587,6 +1620,8 @@ async function downloadUserRawData() {
   }
 }
 
+analyzeUser = backgroundJob('User analysis', analyzeUser);
+downloadUserRawData = backgroundJob('Raw data', downloadUserRawData);
 userBtn.addEventListener('click', analyzeUser);
 downloadUserBtn.addEventListener('click', downloadUserRawData);
 userInput.addEventListener('keydown', function(e) {
@@ -1693,6 +1728,8 @@ async function downloadSubredditRawData() {
   }
 }
 
+checkSubredditVibe = backgroundJob('Vibe check', checkSubredditVibe);
+downloadSubredditRawData = backgroundJob('Raw data', downloadSubredditRawData);
 subredditBtn.addEventListener('click', checkSubredditVibe);
 downloadSubredditBtn.addEventListener('click', downloadSubredditRawData);
 subredditInput.addEventListener('keydown', function(e) {
@@ -1705,6 +1742,7 @@ const transcriptBox = document.getElementById('transcript-box');
 const playlistBox = document.getElementById('playlist-box');
 let currentTranscriptEntries = [];
 let currentVideoTitle = '';
+let currentTranscriptUrl = '';
 let currentPlaylist = null;
 
 const TRANSCRIBER_BASE = 'https://transcriber-alexkrewson-6940s-projects.vercel.app/api';
@@ -1765,6 +1803,7 @@ async function fetchYoutubeTranscript() {
     if (!resp.ok) throw new Error(data.error || 'API error ' + resp.status);
 
     currentTranscriptEntries = data.entries;
+    currentTranscriptUrl = url;
     document.getElementById('transcript-meta').textContent = data.entries.length + ' entries';
     document.getElementById('transcript-entries').innerHTML = data.entries.map(function(e) {
       return '<div class="transcript-entry"><span class="transcript-time">[' + e.time + ']</span><span>' + escapeHtml(e.text) + '</span></div>';
@@ -2028,9 +2067,34 @@ document.getElementById('yt-copy-btn').addEventListener('click', async function(
   }
 });
 
-document.getElementById('yt-analyze-btn').addEventListener('click', analyzeTranscript);
-ytFetchBtn.addEventListener('click', fetchYoutubeTranscript);
-ytInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') fetchYoutubeTranscript(); });
+const ytRowAnalyzeBtn = document.getElementById('yt-row-analyze-btn');
+const fetchTranscriptJob = backgroundJob('Transcript', fetchYoutubeTranscript);
+document.getElementById('yt-analyze-btn').addEventListener('click', backgroundJob('Video analysis', analyzeTranscript));
+ytRowAnalyzeBtn.addEventListener('click', backgroundJob('Video analysis', analyzeVideo));
+ytFetchBtn.addEventListener('click', fetchTranscriptJob);
+ytInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') fetchTranscriptJob(); });
+
+// The row's Analyze button: fetch the transcript unless this URL's is already
+// on screen, then hand it to analyzeTranscript. Playlists stay download-only --
+// analysing 200 videos in one press would spend 200 analyses' worth of credits.
+async function analyzeVideo() {
+  const url = ytInput.value.trim();
+  if (!url) { setStatus('Please paste a YouTube URL.', true); return; }
+  if (classifyYoutubeUrl(url).mode === 'playlist') {
+    setStatus('Analyze Video works on one video at a time. Use Get Transcript to download a whole playlist.', true);
+    return;
+  }
+  ytRowAnalyzeBtn.disabled = true;
+  try {
+    if (currentTranscriptUrl !== url || !currentTranscriptEntries.length) {
+      await fetchYoutubeTranscript();
+      if (currentTranscriptUrl !== url) return; // fetch failed; it already said why
+    }
+    await analyzeTranscript();
+  } finally {
+    ytRowAnalyzeBtn.disabled = false;
+  }
+}
 
 async function analyzeTranscript() {
   if (!currentTranscriptEntries.length) { setStatus('No transcript loaded.', true); return; }

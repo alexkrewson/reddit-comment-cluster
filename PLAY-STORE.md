@@ -26,6 +26,15 @@ their own participation.
   button. See the commit message on `f114e36` for what each one was.
 - Buy Credits removed on Android, before any Android user can ever have paid.
 - `allowBackup=false`, so the Supabase session token does not travel to Drive.
+- Runs survive switching apps (added 2026-09-26). Android froze the backgrounded
+  process and the in-flight fetch died with it; `WorkService` now holds a
+  `shortService` foreground service for the length of a run, and a "ready" /
+  "failed" notification is posted if the app is not on screen when it ends.
+  That adds `FOREGROUND_SERVICE` and `POST_NOTIFICATIONS` to the manifest.
+  `shortService` was chosen because it needs **no** Play Console
+  foreground-service declaration; its cost is a ~3 minute cap, after which the
+  run continues unprotected. Measured on the emulator: backgrounded for 80s,
+  a bare run managed 3 of 20 requests, a wrapped one all 20.
 - Privacy policy at `privacy/index.html`, with a `#delete` anchor.
 - Two verification scripts, and both pass:
   - `npm run verify:apk` reads the shipped artifact back and checks nine things

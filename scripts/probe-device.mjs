@@ -120,6 +120,9 @@ const probes = [
   ["code entry present", "!!document.getElementById('auth-code-row')", true],
   ["Clipboard plugin", "!!(Capacitor.Plugins && Capacitor.Plugins.Clipboard)", true],
   ["App plugin (back button)", "!!(Capacitor.Plugins && Capacitor.Plugins.App)", true],
+  // Local plugin registered in MainActivity. Absent means runs die again when
+  // the user switches apps, and backgroundJob() silently degrades to a no-op.
+  ["BackgroundWork plugin", "!!(Capacitor.Plugins && Capacitor.Plugins.BackgroundWork)", true],
   ["page title", "document.title", "Distillery"],
 ];
 
