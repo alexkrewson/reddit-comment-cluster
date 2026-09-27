@@ -1,6 +1,72 @@
 # Distillery — Maintenance To-Do
 
   ============================================================================
+  START HERE — 2026-09-26. Newest block first. The 2026-08-23 block below is
+  still the best map of the Android work; this one records what changed since.
+  PLAY-STORE.md remains the live document.
+  ============================================================================
+
+  THE LOCAL FOLDER IS NOW `repos\distillery` (was `reddit-comment-cluster`,
+  renamed in Explorer). Git doesn't care; nothing in the repo hardcoded the old
+  path. Claude's session history was copied into the new project folder under
+  ~/.claude/projects so `claude --resume` finds it; the old folder is still
+  there and can be deleted once that is confirmed.
+
+  THE GITHUB REPO IS DELIBERATELY STILL `reddit-comment-cluster`. The live app
+  is served by GitHub Pages at alexkrewson.github.io/reddit-comment-cluster/,
+  and Pages does NOT redirect after a repo rename: the bookmarked URL and the
+  Worker's default redirect (reddit-proxy-worker.js ~238) would both 404. Same
+  order of operations as the block below: domain first, allow-list, THEN rename.
+
+  SHIPPED AND PUSHED (live site rebuilt from f86bc71, checked by fetching it):
+    c21393f  Sign-in is code-only. The Magic Link email template in Supabase is
+             now just {{ .Token }}, no link: its link had been opening
+             packing_list, because distillery.trolleysolution.com is not in the
+             redirect allow-list and Supabase fell back to the project's Site
+             URL. packing_list signs in with passwords and never sends that
+             template. App wording says "code" throughout, and the sign-in row
+             no longer overflows the 260px settings dropdown.
+    b7258e3  Runs survive switching apps (shortService foreground service +
+             "ready"/"failed" notification), and the YouTube row gained Analyze
+             Video. Written by a parallel session; committed together because
+             they share a hunk.
+    8984bef  Peacock colours.
+    f86bc71  PLAY-STORE.md: sign-in codes done.
+
+  SUPABASE DASHBOARD CHANGES (not in git, so recorded here):
+    - Magic Link template: code only.
+    - Confirm signup template: {{ .Token }} ADDED below the existing link. A
+      brand-new address gets this template, not Magic Link; the link stays
+      because packing_list's password signups use it.
+    - Email OTP Length: 6 (was 8).
+
+  FIRST PHYSICAL DEVICE: an Android 14 tablet (CP80, 1280x800). Installed,
+  probe-device passes all 9 checks, signed out, requested a code, signed in
+  with the 6-digit code. NOT yet tried on hardware: Analyze Video, and the
+  background-work notification (measured on the emulator only).
+
+  versionCode is now 63. Builds made before c21393f all read 59 despite
+  differing, which is why CLAUDE.md says never to type one.
+
+  FOUND, NOT FIXED:
+    - probe-device.mjs calls bare `adb`, so with the emulator AND a device
+      attached, adb refuses to pick one and the probe errors out. Workaround:
+      set ANDROID_SERIAL. Fix: have the script honour it, or pass -s.
+    - Startup logs `Error injecting safe area CSS: TypeError: Cannot read
+      properties of null (reading 'style')`. Capacitor's safe-area injection
+      appears to run before <body> exists. Layout looked right on the tablet.
+      Also a bare `[object Object]` console.log somewhere at load.
+    - Signed out, the main screen is completely empty; sign-in is two taps
+      deep under the gear -> Account with nothing pointing there. A Play
+      reviewer is a first-time user. Worth a "Sign in to start" prompt.
+
+  STILL OPEN FROM BEFORE: account deletion (the biggest Play risk, see
+  PLAY-STORE.md), Cloudflare Pages + the domain, the redirect allow-list entry,
+  the upload keystore, store assets, the post-payment signed-out bug, and
+  manual testing round 1 step 11.
+
+
+  ============================================================================
   START HERE — 2026-08-23. Everything below this block is accurate history for
   its own date and is deliberately NOT renamed: it says "Analyzer" because that
   is what the app was called then.
