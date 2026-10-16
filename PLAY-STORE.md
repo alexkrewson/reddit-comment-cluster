@@ -1,5 +1,18 @@
 # Distillery on Google Play — the road to closed testing
 
+> **DROPPED, 2026-10-16. Distillery stays a web app.** Reddit's Responsible
+> Builder Policy (2025-11-11) needs a reviewed request and a contract for any
+> commercial use, and its Data API rules require deleting stored content once
+> it is deleted on Reddit. Distillery charges for analyses and keeps History
+> permanently, and Alex chose not to make History expire, so a request would be
+> refused and Reddit allows only one per use case. It was never submitted.
+> YouTube transcripts come from an unofficial scraper, which also had no
+> sanctioned route. A paid Play listing built on both was not something to ship.
+>
+> Kept from the effort, and live on the web: in-app data and account deletion,
+> the signed-out "Sign in to start" prompt. Also built: YouTube removed on
+> native. Everything below is the plan as it stood, kept as a record.
+
 Written 2026-08-23, at the point where the Android app first built. Everything
 here that is marked **learned** was paid for once already by `argument_mapper`
 (iDisagree), which is on the closed track now; the citations are to its

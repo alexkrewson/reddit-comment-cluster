@@ -1,6 +1,38 @@
 # Distillery — Maintenance To-Do
 
   ============================================================================
+  START HERE — 2026-10-16. Newest block first.
+  ============================================================================
+
+  THE PLAY RELEASE IS DROPPED. Distillery is a web app. Reasons at the top of
+  PLAY-STORE.md: Reddit's policy wants a contract for commercial use and
+  deletion of anything deleted on Reddit; History is permanent by choice.
+
+  SHIPPED AND LIVE (Pages rebuilt from 0f70581; Worker version cb3db6d8):
+    b94a4c4  Signed-out "Sign in to start" prompt. comment_cluster.py reads
+             Reddit keys from the environment.
+    a5c4781  Settings > Account > Delete my data / Delete my account too.
+             Worker route /delete-account (GET probes packing_list data, POST
+             deletes). YouTube removed on native, with verify/probe checks.
+    0f70581  Worker User-Agent names u/mashmaker86, who owns the Reddit app.
+    The Worker deploy also shipped d7818cb's billing check, if it was not
+    already live: the last deploy before today was 2026-08-08 23:45Z, and that
+    commit is timestamped three hours later.
+
+  REDDIT KEYS: the leaked app cannot be rotated (new apps need Reddit's
+  approval since 2025-11) and must not be deleted: it is the only one and the
+  Worker runs on it. See CLAUDE.md, Security.
+
+  NOT DONE:
+    - Deletion was tested with mocked Supabase only. Real test pending: a
+      throwaway account deleted on the live site.
+    - Analyze User asks Claude for personality and "tribalism", the part of
+      Distillery closest to what Reddit's policy forbids. Decision pending.
+    - Found earlier, still open: probe-device ignores ANDROID_SERIAL; the
+      safe-area CSS error at startup; a stray [object Object] log.
+
+
+  ============================================================================
   START HERE — 2026-09-26. Newest block first. The 2026-08-23 block below is
   still the best map of the Android work; this one records what changed since.
   PLAY-STORE.md remains the live document.

@@ -8,9 +8,9 @@ Read the shared conventions first: `CHANGELOG.md`, then `best-practices.md`,
 `github.com/alexkrewson/apps-shared`. Say "sync shared" to have them re-applied
 to this project.
 
-See `HANDOFF.md` for what the app is. **`PLAY-STORE.md` is the current work** —
-getting this onto the Play closed track, and what iDisagree already learned the
-expensive way about doing that.
+See `HANDOFF.md` for what the app is. **The Play release was dropped on
+2026-10-16** (see the top of `PLAY-STORE.md` for why): Distillery is a web app.
+The Android project stays in the repo but is not being worked toward release.
 
 The frontend that matters is `bookmarklet.html`, still a single hand-written
 file; the root `.py` scripts are older analysis tooling.
