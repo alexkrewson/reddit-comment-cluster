@@ -1,6 +1,7 @@
 import praw
 from praw.models import MoreComments
 import json
+import os
 import re
 import requests
 
@@ -92,8 +93,9 @@ def save_to_json(comment_tree, filename='comments.json'):
 if __name__ == "__main__":
     raw_input = "https://www.reddit.com/r/DiveInYouCoward/s/R4SHk9A49D"  # Paste a submission ID, full URL, or mobile share link here
     submission_id = resolve_submission_id(raw_input)
-    client_id="nTVSegWYAoE4oEjG0lywAA"
-    client_secret="nbYeoSwihpGPWbSUmOnw7ZhApLhuLw"
+    # These were once hardcoded here, in a public repo. Keep them in the environment.
+    client_id = os.environ["REDDIT_CLIENT_ID"]
+    client_secret = os.environ["REDDIT_CLIENT_SECRET"]
     user_agent="script:comment_cluster1.0:1.0 (by /u/mashmaker86)"
 
     tree = fetch_all_comments(submission_id, client_id, client_secret, user_agent)

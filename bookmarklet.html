@@ -138,6 +138,7 @@
   .theme-swatches { display: flex; gap: 3px; flex-shrink: 0; }
   .theme-swatch { width: 13px; height: 13px; border-radius: 50%; border: 1.5px solid rgba(0,0,0,0.3); }
   .help-text { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5; margin: 0; }
+  .signed-out-prompt { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
   .input-row {
     display: flex;
     gap: 8px;
@@ -692,6 +693,14 @@
   </div>
 </div>
 
+<!-- Signed out, #app-content is hidden and the page would otherwise be empty,
+     with sign-in two taps deep under the gear. A Play reviewer is a first-time
+     user, so point at it. -->
+<div id="signed-out-prompt" class="signed-out-prompt" style="display:none">
+  <p class="help-text">Sign in with your email to start. We'll send you a 6-digit code &mdash; no password.</p>
+  <button id="signed-out-signin-btn" class="primary">Sign in</button>
+</div>
+
 <div id="app-content" style="display:none">
 
 <nav class="tab-bar">
@@ -845,6 +854,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 });
 
 const appContent = document.getElementById('app-content');
+const signedOutPrompt = document.getElementById('signed-out-prompt');
 const authLoggedOut = document.getElementById('auth-logged-out');
 const authSentNote = document.getElementById('auth-sent-note');
 const authLoggedInNote = document.getElementById('auth-logged-in-note');
@@ -913,6 +923,19 @@ document.querySelectorAll('.settings-section-toggle[data-section]').forEach(func
   });
 });
 
+// The signed-out prompt's button opens straight to Settings -> Account with the
+// email field focused. stopPropagation, or the outside-click handler above
+// closes the dropdown in the same click that opened it.
+document.getElementById('signed-out-signin-btn').addEventListener('click', function(e) {
+  e.stopPropagation();
+  settingsDropdown.style.display = 'block';
+  const body = document.querySelector('.settings-section-body[data-section-body="account"]');
+  body.style.display = 'block';
+  const chevron = document.querySelector('.settings-section-toggle[data-section="account"] .settings-section-chevron');
+  if (chevron) chevron.classList.add('settings-section-chevron--open');
+  document.getElementById('auth-email').focus();
+});
+
 // ---- About overlay (opened from Settings → About, not a competing tab) ----
 const aboutOverlay = document.getElementById('about-overlay');
 const aboutNav = document.getElementById('about-nav');
@@ -971,6 +994,7 @@ function setAuthUI(session) {
     authLoggedInNote.style.display = 'block';
     document.getElementById('auth-email-display').textContent = session.user.email;
     appContent.style.display = 'block';
+    signedOutPrompt.style.display = 'none';
     loadHistory();
     refreshCreditBalance();
   } else {
@@ -979,6 +1003,7 @@ function setAuthUI(session) {
     setCodeEntryVisible(false);
     authLoggedInNote.style.display = 'none';
     appContent.style.display = 'none';
+    signedOutPrompt.style.display = 'flex';
     renderHistory([]);
     creditBalance = null;
     updateCreditDisplay();
