@@ -96,6 +96,11 @@ const checks = [
   ["6-digit code sign-in", "verifyOtp", 1],
   ["hardware back button", "addListener('backButton'", 1],
   ["no Stripe path on Android", "buy-credits-btn').remove()", 1],
+  // YouTube is web-only: transcripts come from an unofficial scraper, not
+  // something to sell on Play. The gate removes everything marked data-web-only.
+  ["no YouTube on Android", "querySelectorAll('[data-web-only]').forEach(function(el) { el.remove(); })", 1],
+  ["Reddit-only copy shown on Android", "querySelectorAll('[data-native-only]').forEach(function(el) { el.hidden = false; })", 1],
+  ["web YouTube history hidden on Android", "WEB_ONLY_HISTORY_TYPES.indexOf(i.type) === -1", 1],
   ["app is named Distillery", "<title>Distillery</title>", 1],
 ];
 
@@ -105,6 +110,21 @@ for (const [label, needle, want] of checks) {
   const ok = got === want;
   if (!ok) failed++;
   console.log(`${ok ? "ok  " : "FAIL"}  ${label.padEnd(38)} found ${got}, want ${want}`);
+}
+
+// The gate above only removes what is marked. A YouTube element that lost its
+// data-web-only (or a new one added without it) would ship to Android with the
+// gate still "present", so check each one's opening tag carries the marker.
+const webOnly = [
+  'id="yt-input"', 'id="yt-fetch-btn"', 'id="yt-row-analyze-btn"',
+  'id="transcript-box"', 'id="playlist-box"',
+  'id="about-youtube"', 'data-about-section="about-youtube"',
+];
+for (const attr of webOnly) {
+  const tag = (html.match(new RegExp(`<[a-z]+\\b[^>]*\\b${attr}[^>]*>`)) || [])[0];
+  const ok = !!tag && /\sdata-web-only[\s>]/.test(tag);
+  if (!ok) failed++;
+  console.log(`${ok ? "ok  " : "FAIL"}  ${(attr + " web-only").padEnd(38)} ${tag ? (ok ? "marked" : "NOT marked") : "element missing"}`);
 }
 
 // Signing gets its own line because "unsigned" is the failure that still prints

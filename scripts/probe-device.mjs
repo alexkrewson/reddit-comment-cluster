@@ -116,6 +116,16 @@ const probes = [
   ["publicAppUrl()", "publicAppUrl()", "https://distillery.trolleysolution.com/"],
   // Play Payments policy: there must be no Stripe purchase path on Android.
   ["Buy Credits absent", "!document.getElementById('buy-credits-btn')", true],
+  // YouTube is web-only (unofficial transcript scraper; not for a paid listing).
+  ["YouTube row absent", "['yt-input','yt-fetch-btn','yt-row-analyze-btn'].every(function(id) { return !document.getElementById(id); })", true],
+  ["transcript/playlist boxes absent", "!document.getElementById('transcript-box') && !document.getElementById('playlist-box')", true],
+  ["nothing web-only left", "document.querySelectorAll('[data-web-only]').length", 0],
+  // textContent, not innerText: signed out, most of the page is display:none and
+  // innerText would skip it. Attributes too, for placeholders and aria-labels.
+  // Scripts are dropped because the code itself still says YouTube; what matters
+  // is that no element a user can reach does.
+  ["no 'YouTube' in the page", "(function() { var c = document.body.cloneNode(true); c.querySelectorAll('script').forEach(function(s) { s.remove(); }); return /youtube/i.test(c.textContent) || Array.from(c.querySelectorAll('*')).some(function(el) { return Array.from(el.attributes).some(function(a) { return /youtube/i.test(a.value); }); }); })()", false],
+  ["Reddit-only subtitle shown", "!document.querySelector('.subtitle[data-native-only]').hidden", true],
   // The only sign-in route Android has.
   ["code entry present", "!!document.getElementById('auth-code-row')", true],
   ["Clipboard plugin", "!!(Capacitor.Plugins && Capacitor.Plugins.Clipboard)", true],

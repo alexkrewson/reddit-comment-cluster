@@ -8,6 +8,11 @@ have it" oversold a few-second API call as realtime — the fix was to lead with
 the thing that is actually true. Same discipline here: Distillery reads public
 threads that already exist, and the copy says so.
 
+No YouTube anywhere in this copy (2026-10-16). The YouTube transcript tools are
+web-only and removed from the Android app, because transcripts come from an
+unofficial scraper: fine for a web tool, not something to sell in a paid
+listing. Do not add them back here unless the app gets them back.
+
 No em dashes anywhere in this file, at Alex's request.
 
 ---
@@ -21,10 +26,10 @@ Distillery
 ## Short description (max 80)
 
 ```
-Reddit threads and YouTube transcripts, distilled into what was actually said.
+Reddit threads, users and subreddits, distilled into what was actually said.
 ```
 
-78 characters, checked not counted by hand.
+76 characters, checked not counted by hand.
 
 ## Full description (max 4000)
 
@@ -49,9 +54,6 @@ how it thinks, with direct quotes.
 Subreddits. Before you post somewhere new, find out what the room is like. Tone,
 typical topics, how people treat each other, what does well, and any norms worth
 knowing before you trip over one.
-
-YouTube transcripts. Fetch the transcript of any video with captions, read it
-with timestamps, and optionally have it analysed the same way.
 
 WHY IT IS USEFUL
 
@@ -78,8 +80,8 @@ Credits are bought on the Distillery website, not inside this app.
 WHAT IT DOES NOT DO
 
 Distillery only reads content that is already public. It does not sign in to
-Reddit or YouTube as you, cannot see private messages or private subreddits, and
-has no access to your accounts on either service.
+Reddit as you, cannot see private messages or private subreddits, and has no
+access to your Reddit account.
 
 It can summarise a person's public posting history. That is public information
 and the app adds nothing private to it, but the summary is still about a real
@@ -90,7 +92,7 @@ No ads. No analytics. No advertising ID. Sign in is an email address and a code,
 and that is the only personal detail stored.
 ```
 
-2,586 characters, comfortably inside 4,000.
+2,421 characters, comfortably inside 4,000.
 
 ---
 

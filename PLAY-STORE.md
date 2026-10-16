@@ -25,6 +25,15 @@ their own participation.
 - The four WebView breakages fixed — clipboard, redirect origin, sign-in, back
   button. See the commit message on `f114e36` for what each one was.
 - Buy Credits removed on Android, before any Android user can ever have paid.
+- YouTube removed on Android (2026-10-16): the transcript row, the transcript and
+  playlist boxes, the About section, and YouTube wording in the subtitle and
+  help, plus YouTube entries in history (made on the web, same account). Reason:
+  transcripts come from an unofficial scraper, fine for the web tool but not for
+  a paid Play listing. The web keeps all of it. Mechanism: anything marked
+  `data-web-only` is removed when `IS_NATIVE`, and `data-native-only` copy is
+  shown instead. The listing copy no longer mentions YouTube. Checked in a
+  simulated native page in desktop Chrome; **not yet proven on the emulator**,
+  so the next `npm run validate:apk` is what proves it (the probes are in place).
 - `allowBackup=false`, so the Supabase session token does not travel to Drive.
 - Runs survive switching apps (added 2026-09-26). Android froze the backgrounded
   process and the in-flight fetch died with it; `WorkService` now holds a
@@ -37,8 +46,9 @@ their own participation.
   a bare run managed 3 of 20 requests, a wrapped one all 20.
 - Privacy policy at `privacy/index.html`, with a `#delete` anchor.
 - Two verification scripts, and both pass:
-  - `npm run verify:apk` reads the shipped artifact back and checks nine things
-    plus the signature. It parses the zip in-process — `unzip` is not installed
+  - `npm run verify:apk` reads the shipped artifact back and checks twelve
+    marker strings, that each YouTube element is marked web-only, and the
+    signature. It parses the zip in-process — `unzip` is not installed
     here and the `tar` on PATH is GNU tar, which can read neither a Windows path
     nor a zip. It uses **apksigner, not jarsigner**: modern APKs sign with
     scheme v2/v3, which has no `META-INF/MANIFEST.MF`, so jarsigner calls a
@@ -245,6 +255,8 @@ project and was nearly uploaded:
 - `distillery.trolleysolution.com` present (the native `WEB_ORIGIN`)
 - `verifyOtp` present (code sign-in — without it nobody can log in)
 - `buy-credits-btn').remove()` present (no Stripe path on Android)
+- the `data-web-only` removal present, and every YouTube element marked with it
+  (no YouTube on Android)
 - signed with the upload key
 
 That is `npm run verify:aab`, which runs exactly those checks and exits non-zero

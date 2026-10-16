@@ -139,6 +139,11 @@
   .theme-swatch { width: 13px; height: 13px; border-radius: 50%; border: 1.5px solid rgba(0,0,0,0.3); }
   .help-text { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5; margin: 0; }
   .signed-out-prompt { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+  .link-btn { background: none; border: none; padding: 0.4rem 0; min-height: 44px; font-size: 0.75rem; color: var(--text-secondary); text-decoration: underline; cursor: pointer; text-align: left; }
+  .link-btn:hover { color: var(--text-primary); }
+  .delete-confirm { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--border); }
+  .delete-confirm #delete-account-confirm { display: flex; flex-direction: column; gap: 6px; }
+  button.secondary.danger { color: var(--danger-text); border-color: var(--danger-text); white-space: normal; }
   .input-row {
     display: flex;
     gap: 8px;
@@ -566,7 +571,10 @@
 <div class="top-row">
   <div>
     <h1>Distillery</h1>
-    <p class="subtitle">Paste a Reddit post URL to cluster comment points, a username to profile a user, a subreddit to check its vibe, or a YouTube URL to fetch and analyze a transcript — or a playlist URL to download every transcript in it.</p>
+    <!-- data-web-only / data-native-only: YouTube is web-only (see "YouTube is
+         web-only" in the script). The native copy stays hidden on the web. -->
+    <p class="subtitle" data-web-only>Paste a Reddit post URL to cluster comment points, a username to profile a user, a subreddit to check its vibe, or a YouTube URL to fetch and analyze a transcript — or a playlist URL to download every transcript in it.</p>
+    <p class="subtitle" data-native-only hidden>Paste a Reddit post URL to cluster comment points, a username to profile a user, or a subreddit to check its vibe.</p>
   </div>
   <div class="settings-wrap">
     <button id="settings-btn" class="icon-btn" title="Settings" aria-label="Settings">⚙️</button>
@@ -593,6 +601,19 @@
             <button id="buy-credits-btn" class="secondary">Buy Credits</button>
             <button id="auth-signout-btn" class="secondary">Sign out</button>
           </div>
+          <button id="delete-data-btn" class="link-btn">Delete my data…</button>
+          <div id="delete-confirm" class="delete-confirm" style="display:none">
+            <p id="delete-confirm-text" class="help-text"></p>
+            <button id="delete-data-yes" class="secondary danger">Yes, delete my data</button>
+            <button id="delete-account-btn" class="link-btn" style="display:none">Delete my account too…</button>
+            <div id="delete-account-confirm" style="display:none">
+              <p id="delete-account-text" class="help-text"></p>
+              <button id="delete-account-yes" class="secondary danger">Delete data and account</button>
+            </div>
+            <button id="delete-cancel" class="secondary">Cancel</button>
+            <p id="delete-error" class="help-text" style="display:none; color:var(--danger-text);"></p>
+          </div>
+          <p id="delete-done" class="help-text" style="display:none;"></p>
         </div>
       </div>
 
@@ -609,7 +630,7 @@
         Help <span class="settings-section-chevron">▾</span>
       </button>
       <div class="settings-section-body" data-section-body="help" style="display:none">
-        <p class="help-text">Sign in above first, then paste a Reddit post URL, a username, or a subreddit, or a YouTube video or playlist URL for transcripts. See About for details on each tool.</p>
+        <p class="help-text">Sign in above first, then paste a Reddit post URL, a username, or a subreddit<span data-web-only>, or a YouTube video or playlist URL for transcripts</span>. See About for details on each tool.</p>
       </div>
 
     </div>
@@ -626,7 +647,7 @@
         <button class="about-nav-link" data-about-section="about-post">Post Analysis</button>
         <button class="about-nav-link" data-about-section="about-user">User Analysis</button>
         <button class="about-nav-link" data-about-section="about-vibe">Subreddit Vibe Check</button>
-        <button class="about-nav-link" data-about-section="about-youtube">YouTube Transcripts</button>
+        <button class="about-nav-link" data-about-section="about-youtube" data-web-only>YouTube Transcripts</button>
         <button class="about-nav-link" data-about-section="about-raw">Raw Data Downloads</button>
         <button class="about-nav-link" data-about-section="about-history">History</button>
         <button class="about-nav-link" data-about-section="about-privacy">Privacy &amp; Data</button>
@@ -634,7 +655,7 @@
       <div class="about-scroll" id="about-scroll">
         <section id="about-overview">
           <h2>Overview</h2>
-          <p>Distillery uses Claude to make sense of Reddit threads, Reddit users, subreddit culture, and YouTube transcripts. Sign in with an emailed code (top right, under Account) to unlock every tool — AI analysis, raw data downloads, and your history are all tied to your account.</p>
+          <p>Distillery uses Claude to make sense of Reddit threads, Reddit users, and subreddit culture<span data-web-only>, plus YouTube transcripts</span>. Sign in with an emailed code (top right, under Account) to unlock every tool — AI analysis, raw data downloads, and your history are all tied to your account.</p>
         </section>
         <section id="about-post">
           <h2>Post Analysis</h2>
@@ -648,7 +669,7 @@
           <h2>Subreddit Vibe Check</h2>
           <p>Enter a subreddit (any format — <code>r/name</code>, a URL, or just the name). Distillery samples the month's top posts plus comments from the highest-scoring ones, then asks Claude to characterize tone, typical topics, how people engage with each other, what performs well, and any norms or red flags — so you can "know the room" before posting.</p>
         </section>
-        <section id="about-youtube">
+        <section id="about-youtube" data-web-only>
           <h2>YouTube Transcripts</h2>
           <p>Paste a YouTube URL and choose Get Transcript to fetch its transcript (with timestamps) and real video title, or Analyze Video to fetch it and send it straight to Claude for a summary, key points, and notable quotes.</p>
           <p>Paste a <strong>playlist</strong> URL (<code>youtube.com/playlist?list=…</code>) and every video in it is fetched instead, one row per video, with a single Copy All or Download All at the end. Bulk playlist fetching is a download only — it uses no AI credits. Analyze Video works on one video at a time. Videos with captions turned off are marked unavailable and the rest still come through. YouTube Mixes can't be fetched: they're generated per viewer and have no fixed list of videos.</p>
@@ -659,11 +680,11 @@
         </section>
         <section id="about-history">
           <h2>History</h2>
-          <p>Every AI analysis you run while signed in is saved to the History tab with a human-readable title (post title, <code>u/username</code>, <code>r/subreddit</code>, or the video title). Click any entry to reload its result instantly.</p>
+          <p>Every AI analysis you run while signed in is saved to the History tab with a human-readable title (post title, <code>u/username</code>, or <code>r/subreddit</code><span data-web-only>, or the video title</span>). Click any entry to reload its result instantly.</p>
         </section>
         <section id="about-privacy">
           <h2>Privacy &amp; Data</h2>
-          <p>Reddit and YouTube data is fetched through a Cloudflare Worker that also proxies Claude calls — your Anthropic usage never touches the browser directly. Signing in uses a one-time code emailed by Supabase; saved history is private to your account via row-level security.</p>
+          <p>Reddit<span data-web-only> and YouTube</span> data is fetched through a Cloudflare Worker that also proxies Claude calls — your Anthropic usage never touches the browser directly. Signing in uses a one-time code emailed by Supabase; saved history is private to your account via row-level security.</p>
         </section>
       </div>
     </div>
@@ -697,6 +718,7 @@
      with sign-in two taps deep under the gear. A Play reviewer is a first-time
      user, so point at it. -->
 <div id="signed-out-prompt" class="signed-out-prompt" style="display:none">
+  <p id="signed-out-note" class="help-text" style="display:none"></p>
   <p class="help-text">Sign in with your email to start. We'll send you a 6-digit code &mdash; no password.</p>
   <button id="signed-out-signin-btn" class="primary">Sign in</button>
 </div>
@@ -723,12 +745,12 @@
   <button id="download-subreddit-btn" class="secondary" aria-label="Download Raw Data"><span class="btn-icon" aria-hidden="true">⬇</span><span class="btn-label">Download Raw Data</span></button>
   <button id="subreddit-btn" class="primary" aria-label="Check Vibe"><span class="btn-icon" aria-hidden="true">📊</span><span class="btn-label">Check Vibe</span></button>
 
-  <input id="yt-input" type="url" placeholder="Paste YouTube video or playlist URL here…" autocomplete="off" autocorrect="off" spellcheck="false">
-  <button id="yt-fetch-btn" class="secondary" aria-label="Get Transcript"><span class="btn-icon" aria-hidden="true">⬇</span><span class="btn-label">Get Transcript</span></button>
-  <button id="yt-row-analyze-btn" class="primary" aria-label="Analyze Video"><span class="btn-icon" aria-hidden="true">📊</span><span class="btn-label">Analyze Video</span></button>
+  <input id="yt-input" data-web-only type="url" placeholder="Paste YouTube video or playlist URL here…" autocomplete="off" autocorrect="off" spellcheck="false">
+  <button id="yt-fetch-btn" data-web-only class="secondary" aria-label="Get Transcript"><span class="btn-icon" aria-hidden="true">⬇</span><span class="btn-label">Get Transcript</span></button>
+  <button id="yt-row-analyze-btn" data-web-only class="primary" aria-label="Analyze Video"><span class="btn-icon" aria-hidden="true">📊</span><span class="btn-label">Analyze Video</span></button>
 </div>
 
-<div id="transcript-box">
+<div id="transcript-box" data-web-only>
   <div class="transcript-toolbar">
     <span class="transcript-meta" id="transcript-meta"></span>
     <div class="transcript-toolbar-btns">
@@ -739,7 +761,7 @@
   <div class="transcript-entries" id="transcript-entries"></div>
 </div>
 
-<div id="playlist-box">
+<div id="playlist-box" data-web-only>
   <div class="transcript-toolbar">
     <span class="transcript-meta" id="playlist-meta"></span>
     <div class="transcript-toolbar-btns">
@@ -992,6 +1014,8 @@ function setAuthUI(session) {
     authSentNote.style.display = 'none';
     setCodeEntryVisible(false);
     authLoggedInNote.style.display = 'block';
+    resetDeleteUI();
+    document.getElementById('delete-done').style.display = 'none';
     document.getElementById('auth-email-display').textContent = session.user.email;
     appContent.style.display = 'block';
     signedOutPrompt.style.display = 'none';
@@ -1050,6 +1074,19 @@ if (IS_NATIVE) {
   document.getElementById('buy-credits-btn').remove();
 } else {
   document.getElementById('buy-credits-btn').addEventListener('click', openBuyCreditsModal);
+}
+
+// YouTube is web-only. Transcripts come from an unofficial scraper (the
+// transcriber service reading YouTube through a residential proxy), which is
+// fine for a free-standing web tool and not something to sell in a paid Play
+// listing. So on Android every YouTube element is removed, the same way Buy
+// Credits is: anything marked data-web-only goes, and the Reddit-only copy
+// marked data-native-only is shown in its place. The YouTube wiring further down
+// is skipped on native for the same reason (its elements no longer exist), and
+// history hides YouTube entries made on the web (see WEB_ONLY_HISTORY_TYPES).
+if (IS_NATIVE) {
+  document.querySelectorAll('[data-web-only]').forEach(function(el) { el.remove(); });
+  document.querySelectorAll('[data-native-only]').forEach(function(el) { el.hidden = false; });
 }
 document.getElementById('credits-close-btn').addEventListener('click', function() { creditsOverlay.style.display = 'none'; });
 creditsOverlay.addEventListener('click', function(e) { if (e.target === creditsOverlay) creditsOverlay.style.display = 'none'; });
@@ -1195,6 +1232,106 @@ document.getElementById('auth-signout-btn').addEventListener('click', function()
   supabaseClient.auth.signOut();
 });
 
+// ---- Delete my data / account (Settings -> Account) ----
+// Google Play requires in-app account deletion. Two steps, as in iDisagree,
+// which passed review this way: "Delete my data" keeps the sign-in, and
+// "Delete my account too" removes it. The sign-in is shared with packing_list on
+// this Supabase project, and deleting it deletes their packing lists, so the
+// Worker's GET probe says whether they have any. A failed probe gets the broad
+// warning: being wrong in the reassuring direction would cost them real data.
+const deleteConfirm = document.getElementById('delete-confirm');
+const deleteError = document.getElementById('delete-error');
+const deleteDone = document.getElementById('delete-done');
+
+// Looks elements up per call rather than using the consts above: setAuthUI
+// calls this, and can run before this part of the script has.
+function resetDeleteUI() {
+  document.getElementById('delete-confirm').style.display = 'none';
+  document.getElementById('delete-account-btn').style.display = 'none';
+  document.getElementById('delete-account-confirm').style.display = 'none';
+  document.getElementById('delete-error').style.display = 'none';
+  document.getElementById('delete-data-btn').style.display = '';
+  document.querySelectorAll('#delete-confirm button').forEach(function(b) { b.disabled = false; });
+}
+
+async function deleteRequest(method, body) {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (!session) throw new Error('Please sign in first.');
+  const resp = await fetch(WORKER_URL + '/delete-account', {
+    method,
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await resp.json().catch(function() { return {}; });
+  if (!resp.ok) {
+    const e = new Error(data.error === 'account_delete_failed'
+      ? 'Your data was deleted, but your sign-in could not be. Email support@trolleysolution.com and it will be removed by hand.'
+      : "Couldn't finish deleting. Try again; it is safe to repeat.");
+    throw e;
+  }
+  return data;
+}
+
+document.getElementById('delete-data-btn').addEventListener('click', async function(e) {
+  e.stopPropagation();
+  deleteDone.style.display = 'none';
+  this.style.display = 'none';
+  const credits = creditBalance ? ' and your $' + (creditBalance / 100).toFixed(2) + ' credit balance' : ' and your credit balance';
+  document.getElementById('delete-confirm-text').textContent =
+    'Permanently deletes all your saved analyses' + credits + '. Your sign-in stays. This can’t be undone.';
+  deleteConfirm.style.display = 'flex';
+
+  // A failed probe still offers account deletion (Play requires it to be
+  // there), just with the broad warning.
+  let probe = null;
+  try { probe = await deleteRequest('GET'); } catch (_) { /* broad warning below */ }
+  const text = !probe || probe.uncertain
+    ? 'This also deletes your sign-in. If you use the same email for Packing List, you’ll lose it and your packing lists too.'
+    : probe.sharedApps.length
+      ? 'This also deletes your sign-in, which you also use for Packing List. Your packing lists will be deleted too.'
+      : 'This also deletes your sign-in. You have no packing lists, so nothing else is lost.';
+  document.getElementById('delete-account-text').textContent = text;
+  document.getElementById('delete-account-btn').style.display = '';
+});
+
+document.getElementById('delete-account-btn').addEventListener('click', function(e) {
+  e.stopPropagation();
+  this.style.display = 'none';
+  document.getElementById('delete-account-confirm').style.display = 'flex';
+});
+
+document.getElementById('delete-cancel').addEventListener('click', function(e) {
+  e.stopPropagation();
+  resetDeleteUI();
+});
+
+async function runDelete(deleteAccount) {
+  deleteError.style.display = 'none';
+  document.querySelectorAll('#delete-confirm button').forEach(function(b) { b.disabled = true; });
+  try {
+    await deleteRequest('POST', { deleteAccount });
+    resetDeleteUI();
+    if (deleteAccount) {
+      // #status lives in the app content, which signing out hides.
+      const note = document.getElementById('signed-out-note');
+      note.textContent = 'Your data and account have been deleted.';
+      note.style.display = 'block';
+      await supabaseClient.auth.signOut();
+    } else {
+      loadHistory();
+      refreshCreditBalance();
+      deleteDone.textContent = 'Your data has been deleted.';
+      deleteDone.style.display = 'block';
+    }
+  } catch (err) {
+    deleteError.textContent = err.message;
+    deleteError.style.display = 'block';
+    document.querySelectorAll('#delete-confirm button').forEach(function(b) { b.disabled = false; });
+  }
+}
+document.getElementById('delete-data-yes').addEventListener('click', function(e) { e.stopPropagation(); runDelete(false); });
+document.getElementById('delete-account-yes').addEventListener('click', function(e) { e.stopPropagation(); runDelete(true); });
+
 // ---- Android hardware back button ----
 // Without this the back button closes the app outright from anywhere, including
 // with a modal open, which reads as a crash. Order matters: dismiss whatever is
@@ -1265,9 +1402,14 @@ async function saveAnalysis(type, query, title, meta, result) {
 async function loadHistory() {
   const { data: { session } } = await supabaseClient.auth.getSession();
   if (!session) { renderHistory([]); return; }
-  const { data } = await supabaseClient
+  let query = supabaseClient
     .from('analyses')
-    .select('id, type, query, title, meta, result, created_at')
+    .select('id, type, query, title, meta, result, created_at');
+  // Filtered in the query, not just after it, so an Android user with a lot of
+  // web-side YouTube history still gets their 30 most recent Reddit entries
+  // rather than 30 rows minus whatever was YouTube.
+  if (IS_NATIVE) query = query.not('type', 'in', '(' + WEB_ONLY_HISTORY_TYPES.join(',') + ')');
+  const { data } = await query
     .order('created_at', { ascending: false })
     .limit(30);
   renderHistory(data || []);
@@ -1275,9 +1417,17 @@ async function loadHistory() {
 
 const TYPE_LABELS = { reddit_post: 'Post', reddit_user: 'User', subreddit_vibe: 'Vibe Check', youtube_transcript: 'Transcript', youtube_analysis: 'YT Analysis', youtube_playlist: 'Playlist' };
 
+// History is per account, not per device, so YouTube runs made on the web would
+// otherwise turn up in the Android app. They are hidden there rather than shown:
+// a reopened transcript or analysis is the YouTube feature by another door, and
+// a "YT Analysis" label advertises a tool the app does not have. Nothing is
+// deleted; the same entries are still in history on the web.
+const WEB_ONLY_HISTORY_TYPES = ['youtube_transcript', 'youtube_analysis', 'youtube_playlist'];
+
 function renderHistory(items) {
   const list = document.getElementById('history-list');
   const empty = document.getElementById('history-empty');
+  if (IS_NATIVE) items = items.filter(function(i) { return WEB_ONLY_HISTORY_TYPES.indexOf(i.type) === -1; });
   if (!items.length) { list.innerHTML = ''; empty.style.display = 'block'; return; }
   empty.style.display = 'none';
   list.innerHTML = items.map(function(item) {
@@ -2066,38 +2216,44 @@ async function fetchPlaylistTranscripts(url) {
   }
 }
 
-playlistCopyBtn.addEventListener('click', async function() {
-  if (!currentPlaylist) return;
-  if (await copyText(playlistTranscriptText())) {
-    playlistCopyBtn.textContent = 'Copied!';
-    setTimeout(function() { playlistCopyBtn.textContent = 'Copy All'; }, 2000);
-  } else {
-    setStatus('Copy failed — use Download All instead.', true);
-  }
-});
-
-playlistDownloadBtn.addEventListener('click', function() {
-  if (!currentPlaylist) return;
-  downloadTextFile(slugify(currentPlaylist.title) + '-transcripts.txt', playlistTranscriptText());
-});
-
-document.getElementById('yt-copy-btn').addEventListener('click', async function() {
-  const text = currentTranscriptEntries.map(function(e) { return '[' + e.time + '] ' + e.text; }).join('\n');
-  const b = document.getElementById('yt-copy-btn');
-  if (await copyText(text)) {
-    b.textContent = 'Copied!';
-    setTimeout(function() { b.textContent = 'Copy'; }, 2000);
-  } else {
-    alert('Copy failed — select text manually');
-  }
-});
-
 const ytRowAnalyzeBtn = document.getElementById('yt-row-analyze-btn');
 const fetchTranscriptJob = backgroundJob('Transcript', fetchYoutubeTranscript);
-document.getElementById('yt-analyze-btn').addEventListener('click', backgroundJob('Video analysis', analyzeTranscript));
-ytRowAnalyzeBtn.addEventListener('click', backgroundJob('Video analysis', analyzeVideo));
-ytFetchBtn.addEventListener('click', fetchTranscriptJob);
-ytInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') fetchTranscriptJob(); });
+
+// On Android these elements were removed at startup ("YouTube is web-only"
+// above), so there is nothing to wire, and wiring null would throw and stop the
+// rest of the script.
+if (!IS_NATIVE) {
+  playlistCopyBtn.addEventListener('click', async function() {
+    if (!currentPlaylist) return;
+    if (await copyText(playlistTranscriptText())) {
+      playlistCopyBtn.textContent = 'Copied!';
+      setTimeout(function() { playlistCopyBtn.textContent = 'Copy All'; }, 2000);
+    } else {
+      setStatus('Copy failed — use Download All instead.', true);
+    }
+  });
+
+  playlistDownloadBtn.addEventListener('click', function() {
+    if (!currentPlaylist) return;
+    downloadTextFile(slugify(currentPlaylist.title) + '-transcripts.txt', playlistTranscriptText());
+  });
+
+  document.getElementById('yt-copy-btn').addEventListener('click', async function() {
+    const text = currentTranscriptEntries.map(function(e) { return '[' + e.time + '] ' + e.text; }).join('\n');
+    const b = document.getElementById('yt-copy-btn');
+    if (await copyText(text)) {
+      b.textContent = 'Copied!';
+      setTimeout(function() { b.textContent = 'Copy'; }, 2000);
+    } else {
+      alert('Copy failed — select text manually');
+    }
+  });
+
+  document.getElementById('yt-analyze-btn').addEventListener('click', backgroundJob('Video analysis', analyzeTranscript));
+  ytRowAnalyzeBtn.addEventListener('click', backgroundJob('Video analysis', analyzeVideo));
+  ytFetchBtn.addEventListener('click', fetchTranscriptJob);
+  ytInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') fetchTranscriptJob(); });
+}
 
 // The row's Analyze button: fetch the transcript unless this URL's is already
 // on screen, then hand it to analyzeTranscript. Playlists stay download-only --

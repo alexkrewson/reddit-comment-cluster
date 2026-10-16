@@ -99,6 +99,38 @@ async function callCreditsRpc(fn, userId, amount, env) {
   return resp.json();
 }
 
+// --- Other apps sharing this project's auth.users, as "schema.table". ---
+// Deleting the auth user signs the person out of all of them, and packing_list's
+// tables cascade on it, so its data goes too. Content tables only: the shared
+// signup trigger writes a profiles row everywhere, which proves nothing.
+//
+// `uncertain` matters more than `found`: if a probe fails we do NOT get to say
+// "nothing else is affected", because we don't know that.
+const OTHER_APP_TABLES = ['public.master_items', 'public.trips'];
+
+async function otherAppsWithData(userId, env) {
+  const found = new Set();
+  let uncertain = false;
+  for (const entry of OTHER_APP_TABLES) {
+    const [schema, table] = entry.split('.');
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/${table}?user_id=eq.${userId}&limit=1&select=user_id`, {
+        headers: {
+          'apikey': env.SUPABASE_SERVICE_ROLE_KEY,
+          'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+          'Accept-Profile': schema,
+        },
+      });
+      if (!resp.ok) { uncertain = true; continue; }
+      const rows = await resp.json();
+      if (Array.isArray(rows) && rows.length) found.add('packing_list');
+    } catch {
+      uncertain = true;
+    }
+  }
+  return { found: [...found], uncertain };
+}
+
 // --- Stripe webhook signature verification (Web Crypto — no Stripe SDK) ---
 async function verifyStripeSignature(payload, sigHeader, secret) {
   const parts = Object.fromEntries((sigHeader || '').split(',').map((p) => p.split('=')));
@@ -317,6 +349,82 @@ async function handleRequest(request, env, corsHeaders) {
       }
     }
     return new Response(JSON.stringify({ received: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  }
+
+  // --- Delete my data / account (Play requires in-app account deletion) ---
+  //
+  // Ported from iDisagree's delete-account function, which passed Play review.
+  // GET is a read-only probe and POST is the destructive call, deliberately
+  // split by method so nothing that merely asks a question can ever delete.
+  //
+  // POST {} deletes this app's data and keeps the sign-in.
+  // POST { deleteAccount: true } also deletes the auth user. That user is shared
+  // with packing_list on this Supabase project, and packing_list's tables
+  // cascade on it, so it costs the person their packing lists too. The probe
+  // tells the UI whether that is actually true for them.
+  if (url.pathname === '/delete-account' && (request.method === 'GET' || request.method === 'POST')) {
+    const auth = request.headers.get('Authorization') || '';
+    if (!auth.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'sign_in_required' }), { status: 401, headers: corsHeaders });
+    }
+    let user;
+    try {
+      user = await verifySupabaseToken(auth.slice(7));
+    } catch (e) {
+      return new Response(JSON.stringify({ error: 'sign_in_required' }), { status: 401, headers: corsHeaders });
+    }
+
+    if (request.method === 'GET') {
+      const { found, uncertain } = await otherAppsWithData(user.id, env);
+      return new Response(JSON.stringify({ sharedApps: found, uncertain }), { status: 200, headers: corsHeaders });
+    }
+
+    let deleteAccount = false;
+    try {
+      deleteAccount = (await request.json())?.deleteAccount === true;
+    } catch {
+      // No body: data only.
+    }
+
+    const adminHeaders = {
+      'apikey': env.SUPABASE_SERVICE_ROLE_KEY,
+      'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+      'Content-Type': 'application/json',
+      'Content-Profile': SUPABASE_SCHEMA,
+      'Accept-Profile': SUPABASE_SCHEMA,
+    };
+
+    // analyses.user_id references auth.users WITHOUT on delete cascade, so these
+    // rows have to go first or deleting the auth user fails on the foreign key.
+    const analysesResp = await fetch(`${SUPABASE_URL}/rest/v1/analyses?user_id=eq.${user.id}`, {
+      method: 'DELETE', headers: adminHeaders,
+    });
+    if (!analysesResp.ok) {
+      return new Response(JSON.stringify({ error: 'delete_failed', detail: await analysesResp.text() }), { status: 500, headers: corsHeaders });
+    }
+
+    // Data only: zero the balance but keep the row. The profile is created on
+    // signup, so deleting it would leave a signed-in account with no profile.
+    const profileResp = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${user.id}`, deleteAccount
+      ? { method: 'DELETE', headers: adminHeaders }
+      : { method: 'PATCH', headers: adminHeaders, body: JSON.stringify({ credits_cents: 0 }) });
+    if (!profileResp.ok) {
+      return new Response(JSON.stringify({ error: 'delete_failed', detail: await profileResp.text() }), { status: 500, headers: corsHeaders });
+    }
+
+    if (deleteAccount) {
+      // Last, so a failure here still leaves the data deleted rather than
+      // orphaning rows behind a login that no longer exists.
+      const userResp = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${user.id}`, {
+        method: 'DELETE',
+        headers: { 'apikey': env.SUPABASE_SERVICE_ROLE_KEY, 'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
+      });
+      if (!userResp.ok) {
+        return new Response(JSON.stringify({ error: 'account_delete_failed', detail: await userResp.text(), dataDeleted: true }), { status: 500, headers: corsHeaders });
+      }
+    }
+
+    return new Response(JSON.stringify({ deleted: true, accountDeleted: deleteAccount }), { status: 200, headers: corsHeaders });
   }
 
   // --- Reddit routes ---
