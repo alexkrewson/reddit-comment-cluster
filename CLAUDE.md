@@ -56,15 +56,20 @@ Play's Payments policy wants Play Billing for anything consumed in-app.
 
 ## Security
 
-`comment_cluster.py` still has a Reddit API `client_id` and `client_secret`
-hardcoded at lines 95-96, and **this repo is public** (confirmed 2026-08-23).
-They have been readable by anyone since commit `6cb7b34`. Deleting the lines does
-not help on its own — they remain in git history and the GitHub API — so the fix
-is to rotate at reddit.com/prefs/apps and read from the environment.
+The Reddit app `comment_cluster/1.0` (a personal-use script) has a leaked
+secret: it was hardcoded in `comment_cluster.py` from commit `6cb7b34` until
+`b94a4c4`, and **this repo is public**. The script now reads
+`REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET` from the environment, but the old
+values are still in git history.
 
-If those are the same credentials the Worker holds as `REDDIT_CLIENT_ID` /
-`REDDIT_CLIENT_SECRET`, rotating breaks the live app until the Worker secrets are
-updated too. Do both in one go.
+**It cannot be rotated, and must not be deleted** (found 2026-10-16). It is the
+only app on the account, so the Worker uses it too. Since Reddit's Responsible
+Builder Policy (2025-11-11), "create app" gives no new app without a manually
+reviewed access request, so deleting this one would break every Reddit feature
+with no replacement. What a leak allows: app-only, read-only requests against
+this app's rate limit. It does not allow signing in as the account. Rotate only
+after an access request is approved: create the new app, run `wrangler secret
+put` for both Worker secrets, check the live site, *then* delete the old app.
 
 ## Stack
 
