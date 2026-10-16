@@ -161,7 +161,7 @@ async function getAccessToken(env) {
     headers: {
       'Authorization': `Basic ${credentials}`,
       'Content-Type': 'application/x-www-form-urlencoded',
-      'User-Agent': 'cloudflare-worker:reddit-comment-cluster:1.0 (by /u/alexkrewson)',
+      'User-Agent': 'cloudflare-worker:reddit-comment-cluster:1.0 (by /u/mashmaker86)',
     },
     body: 'grant_type=client_credentials',
   });
@@ -431,7 +431,7 @@ async function handleRequest(request, env, corsHeaders) {
   const token = await getAccessToken(env);
   const headers = {
     'Authorization': `Bearer ${token}`,
-    'User-Agent': 'cloudflare-worker:reddit-comment-cluster:1.0 (by /u/alexkrewson)',
+    'User-Agent': 'cloudflare-worker:reddit-comment-cluster:1.0 (by /u/mashmaker86)',
   };
 
   const user = url.searchParams.get('user');
