@@ -23,11 +23,17 @@
   approval since 2025-11) and must not be deleted: it is the only one and the
   Worker runs on it. See CLAUDE.md, Security.
 
+  ANALYZE USER REMOVED. It asked Claude for a named person's personality and
+  "tribalism", the closest thing in Distillery to what Reddit's policy forbids
+  (inferring sensitive characteristics), and the risk was to u/mashmaker86
+  itself. The user row is now Download Raw Data + Copy Raw Data.
+
+  DELETION VERIFIED LIVE: Alex deleted a throwaway account
+  (alex.krewson+deltest) on the live site; afterwards no such auth user and no
+  orphaned analyses/profiles rows. auth.audit_log_entries is empty on this
+  project, so there is no audit record to point to.
+
   NOT DONE:
-    - Deletion was tested with mocked Supabase only. Real test pending: a
-      throwaway account deleted on the live site.
-    - Analyze User asks Claude for personality and "tribalism", the part of
-      Distillery closest to what Reddit's policy forbids. Decision pending.
     - Found earlier, still open: probe-device ignores ANDROID_SERIAL; the
       safe-area CSS error at startup; a stray [object Object] log.
 

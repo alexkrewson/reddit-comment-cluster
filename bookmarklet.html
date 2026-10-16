@@ -139,6 +139,7 @@
   .theme-swatch { width: 13px; height: 13px; border-radius: 50%; border: 1.5px solid rgba(0,0,0,0.3); }
   .help-text { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5; margin: 0; }
   .signed-out-prompt { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+  .raw-data { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; font-size: 0.8rem; }
   .link-btn { background: none; border: none; padding: 0.4rem 0; min-height: 44px; font-size: 0.75rem; color: var(--text-secondary); text-decoration: underline; cursor: pointer; text-align: left; }
   .link-btn:hover { color: var(--text-primary); }
   .delete-confirm { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--border); }
@@ -573,8 +574,8 @@
     <h1>Distillery</h1>
     <!-- data-web-only / data-native-only: YouTube is web-only (see "YouTube is
          web-only" in the script). The native copy stays hidden on the web. -->
-    <p class="subtitle" data-web-only>Paste a Reddit post URL to cluster comment points, a username to profile a user, a subreddit to check its vibe, or a YouTube URL to fetch and analyze a transcript — or a playlist URL to download every transcript in it.</p>
-    <p class="subtitle" data-native-only hidden>Paste a Reddit post URL to cluster comment points, a username to profile a user, or a subreddit to check its vibe.</p>
+    <p class="subtitle" data-web-only>Paste a Reddit post URL to cluster comment points, a username to copy their recent activity, a subreddit to check its vibe, or a YouTube URL to fetch and analyze a transcript — or a playlist URL to download every transcript in it.</p>
+    <p class="subtitle" data-native-only hidden>Paste a Reddit post URL to cluster comment points, a username to copy their recent activity, or a subreddit to check its vibe.</p>
   </div>
   <div class="settings-wrap">
     <button id="settings-btn" class="icon-btn" title="Settings" aria-label="Settings">⚙️</button>
@@ -645,7 +646,7 @@
         <button class="about-nav-collapse-btn" id="about-nav-collapse-btn" title="Collapse">«</button>
         <button class="about-nav-link" data-about-section="about-overview">Overview</button>
         <button class="about-nav-link" data-about-section="about-post">Post Analysis</button>
-        <button class="about-nav-link" data-about-section="about-user">User Analysis</button>
+        <button class="about-nav-link" data-about-section="about-user">User Data</button>
         <button class="about-nav-link" data-about-section="about-vibe">Subreddit Vibe Check</button>
         <button class="about-nav-link" data-about-section="about-youtube" data-web-only>YouTube Transcripts</button>
         <button class="about-nav-link" data-about-section="about-raw">Raw Data Downloads</button>
@@ -662,8 +663,8 @@
           <p>Paste a Reddit post URL. Distillery fetches every comment, strips deleted/removed/modteam noise and URLs, sorts by score, and asks Claude to identify the distinct points and arguments being made — not just summarize comment-by-comment — clustered into themed groups with their share of the discussion.</p>
         </section>
         <section id="about-user">
-          <h2>User Analysis</h2>
-          <p>Enter a Reddit username (any format — <code>u/name</code>, a profile URL, or just the name). Distillery fetches account metadata plus recent comments and posts, then asks Claude for a clinical read on bot likelihood, engagement value, personality, and thinking style — with direct quotes where relevant.</p>
+          <h2>User Data</h2>
+          <p>Enter a Reddit username (any format — <code>u/name</code>, a profile URL, or just the name). Distillery fetches account metadata plus recent comments and posts, and either copies them to your clipboard or downloads them as a text file. There is no AI analysis of individual users: Reddit's policy forbids inferring personal characteristics about its users.</p>
         </section>
         <section id="about-vibe">
           <h2>Subreddit Vibe Check</h2>
@@ -739,7 +740,7 @@
 
   <input id="user-input" type="text" placeholder="Reddit username or u/username…" autocomplete="off" autocorrect="off" spellcheck="false">
   <button id="download-user-btn" class="secondary" aria-label="Download Raw Data"><span class="btn-icon" aria-hidden="true">⬇</span><span class="btn-label">Download Raw Data</span></button>
-  <button id="user-btn" class="primary" aria-label="Analyze User"><span class="btn-icon" aria-hidden="true">📊</span><span class="btn-label">Analyze User</span></button>
+  <button id="copy-user-btn" class="primary" aria-label="Copy Raw Data"><span class="btn-icon" aria-hidden="true">📋</span><span class="btn-label">Copy Raw Data</span></button>
 
   <input id="subreddit-input" type="text" placeholder="Subreddit or r/subreddit…" autocomplete="off" autocorrect="off" spellcheck="false">
   <button id="download-subreddit-btn" class="secondary" aria-label="Download Raw Data"><span class="btn-icon" aria-hidden="true">⬇</span><span class="btn-label">Download Raw Data</span></button>
@@ -1641,7 +1642,7 @@ input.addEventListener('keydown', function(e) {
 });
 
 const userInput = document.getElementById('user-input');
-const userBtn = document.getElementById('user-btn');
+const copyUserBtn = document.getElementById('copy-user-btn');
 const downloadUserBtn = document.getElementById('download-user-btn');
 
 function showResult(title, meta, text) {
@@ -1670,7 +1671,7 @@ async function workerFetch(params) {
 }
 
 // Fetches + cleans a user's account/comment/post history exactly as the Claude flow
-// does, without calling Claude. Shared by analyzeUser() and downloadUserRawData().
+// did, without calling Claude. Shared by copyUserRawData() and downloadUserRawData().
 async function fetchUserData(username) {
   setStatus('Fetching account info…');
   const about = await workerFetch({ user: username, type: 'about' });
@@ -1724,49 +1725,52 @@ async function fetchUserData(username) {
   return { accountAge, commentKarma, postKarma, totalComments, subs, commentText, submittedText, trimmed };
 }
 
-async function analyzeUser() {
+// Analyze User was removed on 2026-10-16: it asked Claude for a named person's
+// personality and "tribalism", and Reddit's Responsible Builder Policy forbids
+// inferring sensitive characteristics about Reddit users. The raw data stays.
+function userRawText(username, u) {
+  return 'User: u/' + username + '\n' +
+    'Account age: ' + u.accountAge + ' days\n' +
+    'Comment karma: ' + u.commentKarma + '\n' +
+    'Post karma: ' + u.postKarma + '\n' +
+    'Comments fetched: ' + u.totalComments + (u.trimmed ? ' (trimmed to fit)' : '') + '\n' +
+    'Unique subreddits: ' + u.subs.join(', ') + '\n\n' +
+    'RECENT POSTS:\n' + (u.submittedText || '(none)') + '\n\n' +
+    'RECENT COMMENTS:\n' + u.commentText;
+}
+
+// Copies straight away, and also shows the text with its own Copy button: the
+// fetch takes seconds, and some browsers refuse a clipboard write that far from
+// the click that asked for it.
+async function copyUserRawData() {
   const username = normalizeRedditIdentifier(userInput.value, 'user');
   if (!username) { setStatus('Please enter a Reddit username.', true); return; }
 
-  userBtn.disabled = true;
+  copyUserBtn.disabled = true;
   results.className = '';
-
   try {
     const u = await fetchUserData(username);
-    setStatus('Sending to Claude for analysis…');
-
-    const prompt =
-      'Analyze this Reddit user: u/' + username + '\n\n' +
-      'ACCOUNT STATS:\n' +
-      '- Account age: ' + u.accountAge + ' days\n' +
-      '- Comment karma: ' + u.commentKarma + '\n' +
-      '- Post karma: ' + u.postKarma + '\n' +
-      '- Comments fetched: ' + u.totalComments + '\n' +
-      '- Unique subreddits (comments): ' + u.subs.length + '\n' +
-      '- Top subreddits: ' + u.subs.slice(0, 15).join(', ') + '\n\n' +
-      'RECENT POSTS:\n' + (u.submittedText || '(none)') + '\n\n' +
-      'RECENT COMMENTS:\n' + u.commentText + '\n\n' +
-      'Please analyze this user across these four dimensions. Be clinical and precise, not provocative. ' +
-      'Include direct quotes from their comments where relevant.\n\n' +
-      '1) **Bot likelihood** — assess based on karma ratios, account age, posting frequency, comment patterns, and subreddit diversity.\n\n' +
-      '2) **Engagement value** — would it be rewarding to have an extended discussion with this person? Why or why not?\n\n' +
-      '3) **Personality summary** — what can be inferred about their personality from their stats and comment history?\n\n' +
-      '4) **Thinking style** — do they express tribalism? Critical thinking? Conscientiousness? Deep thinking? Open-mindedness?\n\n' +
-      'Format the output in markdown.';
-
-    const result = await claudeRequest({
-      model: 'claude-opus-4-6',
-      max_tokens: 4096,
-      messages: [{ role: 'user', content: prompt }]
-    });
-    const userMeta = u.totalComments + ' comments · ' + u.subs.length + ' subreddits · ' + u.accountAge + ' days old · claude-opus-4-6';
-    showResult('u/' + username, userMeta, result.content[0].text);
-    saveAnalysis('reddit_user', username, 'u/' + username, userMeta, result.content[0].text).then(loadHistory);
-
+    const text = userRawText(username, u);
+    showResult('u/' + username + ' — raw data', u.totalComments + ' comments · ' + u.subs.length + ' subreddits', '');
+    const pre = document.createElement('pre');
+    pre.className = 'raw-data';
+    pre.textContent = text;
+    document.getElementById('output').appendChild(pre);
+    const copyBtn = document.getElementById('copy-btn');
+    copyBtn.onclick = async function() {
+      if (await copyText(text)) {
+        copyBtn.textContent = 'Copied!';
+        setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+      } else {
+        alert('Copy failed — select text manually');
+      }
+    };
+    if (await copyText(text)) setStatus('Copied to your clipboard.');
+    else setStatus('Ready. Press Copy to put it on your clipboard.');
   } catch (e) {
-    handleAnalysisError(e);
+    setStatus('Error: ' + e.message, true);
   } finally {
-    userBtn.disabled = false;
+    copyUserBtn.disabled = false;
   }
 }
 
@@ -1777,16 +1781,7 @@ async function downloadUserRawData() {
   downloadUserBtn.disabled = true;
   try {
     const u = await fetchUserData(username);
-    const fileText =
-      'User: u/' + username + '\n' +
-      'Account age: ' + u.accountAge + ' days\n' +
-      'Comment karma: ' + u.commentKarma + '\n' +
-      'Post karma: ' + u.postKarma + '\n' +
-      'Comments fetched: ' + u.totalComments + (u.trimmed ? ' (trimmed to fit)' : '') + '\n' +
-      'Unique subreddits: ' + u.subs.join(', ') + '\n\n' +
-      'RECENT POSTS:\n' + (u.submittedText || '(none)') + '\n\n' +
-      'RECENT COMMENTS:\n' + u.commentText;
-    downloadTextFile('u-' + slugify(username) + '-raw.txt', fileText);
+    downloadTextFile('u-' + slugify(username) + '-raw.txt', userRawText(username, u));
     clearStatus();
   } catch (e) {
     setStatus('Error: ' + e.message, true);
@@ -1795,12 +1790,12 @@ async function downloadUserRawData() {
   }
 }
 
-analyzeUser = backgroundJob('User analysis', analyzeUser);
+copyUserRawData = backgroundJob('Raw data', copyUserRawData);
 downloadUserRawData = backgroundJob('Raw data', downloadUserRawData);
-userBtn.addEventListener('click', analyzeUser);
+copyUserBtn.addEventListener('click', copyUserRawData);
 downloadUserBtn.addEventListener('click', downloadUserRawData);
 userInput.addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') analyzeUser();
+  if (e.key === 'Enter') copyUserRawData();
 });
 
 const subredditInput = document.getElementById('subreddit-input');
