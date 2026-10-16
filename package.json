@@ -3,30 +3,13 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Distillery — Reddit/YouTube analysis, wrapped for Android via Capacitor",
+  "description": "Distillery: Reddit and YouTube analysis web app (bookmarklet.html) and its Cloudflare Worker",
   "scripts": {
     "build:web": "node scripts/build-web.mjs",
-    "sync:android": "npm run build:web && cap sync android",
-    "build:apk": "npm run sync:android && node scripts/gradlew.mjs assembleDebug",
-    "build:apk:release": "npm run sync:android && node scripts/gradlew.mjs assembleRelease",
-    "build:aab:release": "npm run sync:android && node scripts/gradlew.mjs bundleRelease",
     "deploy": "npm run build:web && wrangler pages deploy www --project-name=distillery --branch=main",
-    "deploy:worker": "wrangler deploy",
-    "verify:apk": "node scripts/verify-artifact.mjs android/app/build/outputs/apk/debug/app-debug.apk",
-    "verify:aab": "node scripts/verify-artifact.mjs android/app/build/outputs/bundle/release/app-release.aab",
-    "probe:device": "node scripts/probe-device.mjs",
-    "install:apk": "adb install -r android/app/build/outputs/apk/debug/app-debug.apk && adb shell am start -n com.alexkrewson.distillery/.MainActivity",
-    "validate:apk": "npm run build:apk && npm run verify:apk && npm run install:apk && npm run probe:device"
-  },
-  "dependencies": {
-    "@capacitor/android": "^8.3.1",
-    "@capacitor/app": "^8.1.1",
-    "@capacitor/browser": "^8.0.1",
-    "@capacitor/clipboard": "^8.0.1",
-    "@capacitor/core": "^8.3.1"
+    "deploy:worker": "wrangler deploy"
   },
   "devDependencies": {
-    "@capacitor/cli": "^8.3.1",
     "wrangler": "^4.116.0"
   }
 }

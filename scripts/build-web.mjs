@@ -1,19 +1,16 @@
 // Build the static web bundle into www/.
 //
 // There is no bundler here on purpose. The whole frontend is one hand-written
-// file, bookmarklet.html, and a bundler would buy nothing but a rewrite. This
-// script exists because Capacitor needs a webDir with an index.html in it, and
-// because two URLs have to keep working:
+// file, bookmarklet.html, and a bundler would buy nothing but a rewrite. It
+// stages www/ for a Cloudflare Pages deploy (npm run deploy), keeping two URLs:
 //
-//   /index.html      what the Android WebView loads (capacitor:// -> index.html)
+//   /index.html       the site root
 //   /bookmarklet.html the URL the app has been served from since it was a
 //                     bookmarklet. Real people have it bookmarked; it is a
-//                     copy, not a redirect, so no review process or WebView
-//                     ever gets handed a 3xx.
+//                     copy, not a redirect.
 //
-// Also copies privacy/ verbatim: Play requires a privacy policy URL and a data
-// deletion URL, and iDisagree learned to hand it a 200 rather than the 308 that
-// a bare /privacy.html produces.
+// Also copies privacy/ verbatim, so /privacy/ answers 200 rather than a
+// redirect.
 
 import { cp, mkdir, rm, readFile, writeFile, readdir } from "node:fs/promises";
 import { existsSync } from "node:fs";

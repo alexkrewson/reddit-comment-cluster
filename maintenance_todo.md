@@ -4,7 +4,9 @@
   START HERE — 2026-10-16. Newest block first.
   ============================================================================
 
-  THE PLAY RELEASE IS DROPPED. Distillery is a web app. Reasons at the top of
+  THE PLAY RELEASE IS DROPPED. Distillery is a web app. The Android project, its
+  scripts and the native code in bookmarklet.html were deleted the same day
+  (last present at ec73db4). Reasons at the top of
   PLAY-STORE.md: Reddit's policy wants a contract for commercial use and
   deletion of anything deleted on Reddit; History is permanent by choice.
 

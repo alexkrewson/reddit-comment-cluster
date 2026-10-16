@@ -10,7 +10,7 @@ to this project.
 
 See `HANDOFF.md` for what the app is. **The Play release was dropped on
 2026-10-16** (see the top of `PLAY-STORE.md` for why): Distillery is a web app.
-The Android project stays in the repo but is not being worked toward release.
+The Android project was then deleted; it is in git history up to `ec73db4`.
 
 The frontend that matters is `bookmarklet.html`, still a single hand-written
 file; the root `.py` scripts are older analysis tooling.
@@ -26,33 +26,22 @@ file; the root `.py` scripts are older analysis tooling.
   accurate for its own date. Do not rewrite "Analyzer" through it — add a new
   block at the top instead.
 - **`bookmarklet.html` is the source of truth; `www/` is generated.** Never edit
-  `www/`. `npm run build:web` stages the same file as both `index.html` (what the
-  Android WebView loads) and `bookmarklet.html` (the URL people have bookmarked).
+  `www/`. `npm run build:web` stages the same file as both `index.html` and
+  `bookmarklet.html` (the URL people have bookmarked), for the not-yet-used
+  Cloudflare Pages deploy. GitHub Pages serves the repo root directly.
 - **This app shares `auth.users` with packing_list** on the keeper Supabase
   project `ycuuxnscbxiibsnefgef`. Deleting an account here deletes their sign-in
   there too. iDisagree moved to its own project on 2026-08-02 and no longer has
   this constraint; Distillery still does.
 
-## Android
+## Android (removed 2026-10-16)
 
-`npm run build:apk` for a debug build, `npm run build:aab:release` for what Play
-wants. Both stage the web assets first and upload the artifact to Google Drive
-via the **shared** `apps-shared/scripts/upload-apk.mjs` — never a copy in this
-repo; `art_app` is what a local copy costs.
-
-`versionCode` is derived from the commit count. Never type one: a fixed value
-makes every build indistinguishable on the phone, and then "I installed the fix
-and it still does it" cannot be told apart from a failed fix.
-
-Four things work on the web and are broken in an Android WebView, all fixed here
-and all worth not rediscovering: `navigator.clipboard` is refused;
-`window.location.origin` is `https://localhost`; a magic link therefore cannot
-sign anyone into the app (6-digit codes are the only Android sign-in path, and
-they need `{{ .Token }}` in the Supabase email template); and the hardware back
-button closes the app from anywhere unless handled.
-
-Buy Credits is removed on native, deliberately, from before the first release —
-Play's Payments policy wants Play Billing for anything consumed in-app.
+The Capacitor wrapper, its build/verify scripts and the native branches in
+`bookmarklet.html` are gone; recover them from `ec73db4` if ever needed. What it
+taught, for any future wrapper: in an Android WebView `navigator.clipboard` is
+refused, `window.location.origin` is `https://localhost` (so magic links cannot
+sign in; codes can), and the hardware back button closes the app unless
+handled. `apps-shared/scripts/upload-apk.mjs` is the shared uploader.
 
 ## Security
 
@@ -75,4 +64,4 @@ put` for both Worker secrets, check the live site, *then* delete the old app.
 
 Python scripts need `praw` and `requests`. Data lives in the keeper Supabase
 project under the `comment_cluster` schema (`analyses`, `profiles`).
-Frontend and Android wrapper need Node; see `package.json`.
+Node is only needed for `wrangler` and `npm run build:web`; see `package.json`.

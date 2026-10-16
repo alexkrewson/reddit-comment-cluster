@@ -9,6 +9,9 @@
 > YouTube transcripts come from an unofficial scraper, which also had no
 > sanctioned route. A paid Play listing built on both was not something to ship.
 >
+> The Android project itself was deleted the same day (last in git at
+> `ec73db4`).
+>
 > Kept from the effort, and live on the web: in-app data and account deletion,
 > the signed-out "Sign in to start" prompt. Also built: YouTube removed on
 > native. Everything below is the plan as it stood, kept as a record.
