@@ -442,6 +442,22 @@ async function handleRequest(request, env, corsHeaders) {
   }
 
   // --- Reddit routes ---
+  // Signed-in, admitted accounts only (2026-10-16). Open, these were a public
+  // proxy on this app's Reddit rate limit for anyone who found the URL.
+  const redditAuth = request.headers.get('Authorization') || '';
+  if (!redditAuth.startsWith('Bearer ')) {
+    return new Response(JSON.stringify({ error: 'sign_in_required' }), { status: 401, headers: corsHeaders });
+  }
+  let caller;
+  try {
+    caller = await verifySupabaseToken(redditAuth.slice(7));
+  } catch (e) {
+    return new Response(JSON.stringify({ error: 'sign_in_required' }), { status: 401, headers: corsHeaders });
+  }
+  if (!isAdmitted(caller)) {
+    return new Response(JSON.stringify({ error: 'closed_to_new_accounts' }), { status: 403, headers: corsHeaders });
+  }
+
   const token = await getAccessToken(env);
   const headers = {
     'Authorization': `Bearer ${token}`,

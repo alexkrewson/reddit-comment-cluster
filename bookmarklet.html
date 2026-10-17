@@ -1427,7 +1427,7 @@ async function fetchPostData(url) {
     : WORKER_URL + '/?url=' + encodeURIComponent(url);
 
   setStatus('Fetching comments…');
-  const workerResp = await fetch(workerUrl);
+  const workerResp = await redditRequest(workerUrl);
   if (!workerResp.ok) {
     const errData = await workerResp.json().catch(() => ({}));
     throw new Error(errData.error || 'Worker error ' + workerResp.status);
@@ -1544,9 +1544,21 @@ function showResult(title, meta, text) {
   };
 }
 
+// The Worker's Reddit routes need a signed-in account, like /claude. Sign-in
+// and closed-to-new-accounts refusals become readable errors here, so callers
+// only have to deal with Reddit's own failures.
+async function redditRequest(url) {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (!session) throw new Error('Please sign in first.');
+  const resp = await fetch(url, { headers: { 'Authorization': 'Bearer ' + session.access_token } });
+  if (resp.status === 401) throw new Error('Please sign in again.');
+  if (resp.status === 403) throw new Error("Distillery isn't taking new accounts, so this one can't fetch from Reddit.");
+  return resp;
+}
+
 async function workerFetch(params) {
   const qs = Object.entries(params).map(([k, v]) => k + '=' + encodeURIComponent(v)).join('&');
-  const resp = await fetch(WORKER_URL + '/?' + qs);
+  const resp = await redditRequest(WORKER_URL + '/?' + qs);
   if (!resp.ok) throw new Error('Worker error ' + resp.status);
   return resp.json();
 }

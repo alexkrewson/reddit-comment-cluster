@@ -49,8 +49,9 @@
   false; Supabase answers an unknown email with "Signups not allowed for otp"),
   and the Worker returns 403 closed_to_new_accounts on /claude and checkout for
   any account created on or after 2026-10-17. Existing accounts (6, newest
-  2026-07-30) are unaffected. The Reddit and transcript routes still need no
-  sign-in at all.
+  2026-07-30) are unaffected. The Worker's Reddit routes now need the same
+  signed-in, admitted account (they were an open proxy on the app's Reddit
+  rate limit).
 
   NOTHING ELSE OPEN. The items carried from earlier (probe-device ignoring
   ANDROID_SERIAL, the safe-area CSS error, a stray [object Object] log) went

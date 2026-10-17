@@ -32,7 +32,8 @@ file; the root `.py` scripts are older analysis tooling.
   Cloudflare Pages build for it was removed.
 - **Closed to new accounts** (2026-10-16). The page signs in with
   `shouldCreateUser: false`, and the Worker refuses `/claude` and checkout to
-  any account created after `ACCOUNTS_CREATED_BEFORE`. Don't switch sign-ups off
+  any account created after `ACCOUNTS_CREATED_BEFORE`; the Reddit routes
+  need the same signed-in, admitted account. Don't switch sign-ups off
   in Supabase instead: that setting is project-wide and would close
   packing_list too. `/delete-account` stays open to everyone.
 - **This app shares `auth.users` with packing_list** on the keeper Supabase
