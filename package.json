@@ -5,8 +5,6 @@
   "type": "module",
   "description": "Distillery: Reddit and YouTube analysis web app (bookmarklet.html) and its Cloudflare Worker",
   "scripts": {
-    "build:web": "node scripts/build-web.mjs",
-    "deploy": "npm run build:web && wrangler pages deploy www --project-name=distillery --branch=main",
     "deploy:worker": "wrangler deploy"
   },
   "devDependencies": {

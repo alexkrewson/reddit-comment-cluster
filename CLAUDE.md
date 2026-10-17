@@ -25,10 +25,11 @@ file; the root `.py` scripts are older analysis tooling.
 - **`maintenance_todo.md` is history, not a live document.** Each block is
   accurate for its own date. Do not rewrite "Analyzer" through it — add a new
   block at the top instead.
-- **`bookmarklet.html` is the source of truth; `www/` is generated.** Never edit
-  `www/`. `npm run build:web` stages the same file as both `index.html` and
-  `bookmarklet.html` (the URL people have bookmarked), for the not-yet-used
-  Cloudflare Pages deploy. GitHub Pages serves the repo root directly.
+- **GitHub Pages serves the repo root; pushing to `main` is the deploy.** Keep
+  the name `bookmarklet.html`: it is the URL people have bookmarked.
+- **Distillery is not in the trolleysolution.com portfolio** (2026-10-16): it is
+  not going public, so there is no `distillery.trolleysolution.com`. The
+  Cloudflare Pages build for it was removed.
 - **This app shares `auth.users` with packing_list** on the keeper Supabase
   project `ycuuxnscbxiibsnefgef`. Deleting an account here deletes their sign-in
   there too. iDisagree moved to its own project on 2026-08-02 and no longer has
@@ -64,4 +65,4 @@ put` for both Worker secrets, check the live site, *then* delete the old app.
 
 Python scripts need `praw` and `requests`. Data lives in the keeper Supabase
 project under the `comment_cluster` schema (`analyses`, `profiles`).
-Node is only needed for `wrangler` and `npm run build:web`; see `package.json`.
+Node is only needed for `wrangler` (the Worker deploy); see `package.json`.

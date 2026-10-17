@@ -39,7 +39,13 @@
   deleted (20 Alex's, 1 another account's, 2026-05-18 to 2026-10-04), so no
   stored inferences about named Reddit users remain.
 
-  NOTHING OPEN. The items carried from earlier (probe-device ignoring
+  OUT OF THE TROLLEYSOLUTION PORTFOLIO: it is not going public, so no
+  distillery.trolleysolution.com (it never had DNS or a Pages project). The
+  privacy page now names the GitHub Pages URL; the Cloudflare Pages build
+  (www/, scripts/build-web.mjs, npm run deploy) is gone. Still using
+  support@trolleysolution.com as the contact address, pending a decision.
+
+  NOTHING ELSE OPEN. The items carried from earlier (probe-device ignoring
   ANDROID_SERIAL, the safe-area CSS error, a stray [object Object] log) went
   with the Android code; the web page logs no errors.
 
