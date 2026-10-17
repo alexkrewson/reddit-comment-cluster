@@ -99,6 +99,13 @@ credit system for a consistent balance/top-up/deduction experience.
   - `/stripe-webhook` — verifies `Stripe-Signature` manually (HMAC-SHA256 via Web
     Crypto, since there's no Stripe SDK in a Worker), calls `add_credits` on
     `checkout.session.completed`.
+  - `/delete-account` — GET probes for packing_list data, POST deletes the user's
+    data (and, with `deleteAccount: true`, the sign-in). Open to every signed-in
+    account, however new.
+  - Reddit routes (`/?user=`, `/?subreddit=`, `/?id=`, `/?url=`) — signed-in only
+    since 2026-10-16.
+  - `/claude`, checkout and the Reddit routes refuse accounts created after
+    2026-10-16 with 403 `closed_to_new_accounts` (see `CLAUDE.md`).
 - **Frontend:** balance shown in Settings → Account, refreshed from
   `X-Credits-Remaining` after every analysis; Buy Credits modal opens Stripe Checkout
   in a new tab; a 402 response opens the same modal instead of a generic error.

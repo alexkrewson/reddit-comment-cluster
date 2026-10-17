@@ -2,9 +2,13 @@
 
 *(formerly "Reddit Comment Cluster")*
 
-A web app that uses Claude AI to analyze Reddit posts, users, and subreddit culture,
-plus YouTube transcripts. Sign in with a magic link to run AI analysis, download raw
-data for free, and keep a history of past results.
+A web app that uses Claude AI to analyze Reddit posts and subreddit culture, plus
+YouTube transcripts. Sign in with an emailed code to run AI analysis, copy or download
+raw data, and keep a history of past results.
+
+**Personal use only (2026-10-16).** Distillery is not going public: it is closed to new
+accounts, and every Worker route that costs money or Reddit quota needs a signed-in
+account created before that date. See `CLAUDE.md`.
 
 **Live app:** https://alexkrewson.github.io/reddit-comment-cluster/bookmarklet.html
 
@@ -21,14 +25,13 @@ Claude to:
 - Show what percentage of total discussion each cluster represents
 - Format the output as Reddit-ready markdown
 
-### User Analysis
+### User Data
 Enter a Reddit username in any format (`u/name`, a profile URL, or just the name).
 Distillery fetches account metadata, up to 300 recent comments (3 pages × 100), and up
-to 100 recent posts, then asks Claude to analyze the user across four dimensions:
-1. **Bot likelihood** — karma ratios, account age, posting patterns, subreddit diversity
-2. **Engagement value** — would a discussion with this person be rewarding?
-3. **Personality summary** — what can be inferred from their history?
-4. **Thinking style** — tribalism, critical thinking, open-mindedness, etc.
+to 100 recent posts, and copies them to the clipboard or downloads them as a text file.
+There is no AI analysis of users: the old Analyze User asked Claude for personality and
+"tribalism", and Reddit's policy forbids inferring characteristics of its users. It was
+removed on 2026-10-16, and its saved results were deleted.
 
 ### Subreddit Vibe Check
 Enter a subreddit in any format (`r/name`, a URL, or just the name). Distillery samples
@@ -42,9 +45,9 @@ YouTube's oEmbed endpoint. Copy the raw transcript, or send it to Claude for a s
 key points, and notable quotes.
 
 ### Raw Data Downloads
-Every Reddit tool (post, user, subreddit) has a free "Download Raw Data" button next to
-its AI button. It runs the same fetch-and-clean pipeline but skips Claude entirely,
-handing you a plain-text file to paste into any AI of your choice — no tokens spent.
+Every Reddit tool (post, user, subreddit) has a free "Download Raw Data" button. It
+runs the same fetch-and-clean pipeline but skips Claude entirely, handing you a
+plain-text file — no tokens spent. Raw data is never saved to History.
 
 ---
 
@@ -59,7 +62,7 @@ handing you a plain-text file to paste into any AI of your choice — no tokens 
 ```
 Browser (GitHub Pages)
   → Cloudflare Worker
-    → Reddit OAuth API (oauth.reddit.com)         [posts, users, subreddits]
+    → Reddit OAuth API (oauth.reddit.com)         [JWT-gated: posts, users, subreddits]
     → Anthropic Claude API                        [JWT-gated, credit-metered]
     → Stripe API                                  [checkout sessions, webhook]
     → Supabase REST API                           [credits RPCs, service-role key]
@@ -70,8 +73,8 @@ Browser
 
 **Why the Cloudflare Worker?** The Anthropic API key, Reddit OAuth credentials, and
 Stripe secret key can't live in client-side JS. The Worker verifies the caller's
-Supabase JWT before forwarding to Claude, deducts credits based on actual token usage,
-proxies Reddit's OAuth-gated API, and handles Stripe checkout-session creation plus the
+Supabase JWT before forwarding to Claude or Reddit, deducts credits based on actual
+token usage, proxies Reddit's OAuth-gated API, and handles Stripe checkout-session creation plus the
 payment webhook — all from one Worker rather than a separate backend.
 
 **Why Reddit OAuth instead of the public JSON API?** Reddit began blocking Cloudflare
@@ -221,7 +224,9 @@ Worker authenticates via OAuth rather than the public JSON API.
 
 **If 403s return:** the OAuth credentials stored as Cloudflare Worker secrets may have
 expired or been revoked. To fix:
-1. Go to `reddit.com/prefs/apps` and find the app (or create a new "script" type app)
+1. Go to `reddit.com/prefs/apps` and find the app. Do **not** delete it or expect
+   "create app" to work: since Reddit's 2025-11 policy a new app needs an approved
+   access request (see "Security" in `CLAUDE.md`)
 2. Copy the client ID and secret
 3. Update the secrets:
    ```bash
