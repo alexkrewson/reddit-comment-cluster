@@ -45,6 +45,13 @@
   (www/, scripts/build-web.mjs, npm run deploy) is gone. Still using
   support@trolleysolution.com as the contact address, pending a decision.
 
+  CLOSED TO NEW ACCOUNTS: sign-in no longer creates users (shouldCreateUser:
+  false; Supabase answers an unknown email with "Signups not allowed for otp"),
+  and the Worker returns 403 closed_to_new_accounts on /claude and checkout for
+  any account created on or after 2026-10-17. Existing accounts (6, newest
+  2026-07-30) are unaffected. The Reddit and transcript routes still need no
+  sign-in at all.
+
   NOTHING ELSE OPEN. The items carried from earlier (probe-device ignoring
   ANDROID_SERIAL, the safe-area CSS error, a stray [object Object] log) went
   with the Android code; the web page logs no errors.

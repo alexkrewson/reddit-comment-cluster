@@ -1029,6 +1029,7 @@ document.querySelectorAll('.credits-pack-btn').forEach(function(btn) {
           cancel_url: origin + '?payment=cancelled',
         }),
       });
+      if (resp.status === 403) throw new Error("Distillery isn't taking new accounts.");
       if (!resp.ok) throw new Error("Couldn't start checkout. Try again.");
       const { url } = await resp.json();
       window.open(url, '_blank');
@@ -1077,11 +1078,18 @@ supabaseClient.auth.getSession().then(function(res) {
 document.getElementById('auth-send-btn').addEventListener('click', async function() {
   const email = document.getElementById('auth-email').value.trim();
   if (!email) { alert('Please enter your email address.'); return; }
+  // Closed to new accounts: an unknown email gets no code, rather than a new
+  // sign-in that would also exist in packing_list. The Worker enforces it.
   const { error } = await supabaseClient.auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: (window.location.origin + window.location.pathname) }
+    options: { emailRedirectTo: (window.location.origin + window.location.pathname), shouldCreateUser: false }
   });
-  if (error) { alert('Error: ' + error.message); return; }
+  if (error) {
+    alert(/signups? not allowed|not found/i.test(error.message)
+      ? "Distillery isn't taking new accounts. If you already have one, check the email address."
+      : 'Error: ' + error.message);
+    return;
+  }
   authLoggedOut.style.display = 'none';
   authSentNote.style.display = 'block';
   setCodeEntryVisible(true);
@@ -1260,6 +1268,7 @@ async function claudeRequest(body) {
     const err = await resp.json().catch(function() { return { error: resp.statusText }; });
     const code = typeof err.error === 'string' ? err.error : null;
     const msg = code || (err.error && err.error.message) || JSON.stringify(err);
+    if (code === 'closed_to_new_accounts') throw new Error("Distillery isn't taking new accounts, so this one can't run analyses.");
     const e = new Error(resp.status === 402 ? "You're out of credits." : ('API error ' + resp.status + ': ' + msg));
     if (resp.status === 402 || code === 'out_of_credits') e.code = 'out_of_credits';
     throw e;

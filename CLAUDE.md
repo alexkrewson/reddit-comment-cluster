@@ -30,6 +30,11 @@ file; the root `.py` scripts are older analysis tooling.
 - **Distillery is not in the trolleysolution.com portfolio** (2026-10-16): it is
   not going public, so there is no `distillery.trolleysolution.com`. The
   Cloudflare Pages build for it was removed.
+- **Closed to new accounts** (2026-10-16). The page signs in with
+  `shouldCreateUser: false`, and the Worker refuses `/claude` and checkout to
+  any account created after `ACCOUNTS_CREATED_BEFORE`. Don't switch sign-ups off
+  in Supabase instead: that setting is project-wide and would close
+  packing_list too. `/delete-account` stays open to everyone.
 - **This app shares `auth.users` with packing_list** on the keeper Supabase
   project `ycuuxnscbxiibsnefgef`. Deleting an account here deletes their sign-in
   there too. iDisagree moved to its own project on 2026-08-02 and no longer has

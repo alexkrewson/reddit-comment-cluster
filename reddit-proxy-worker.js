@@ -18,6 +18,18 @@ const APP_ID = 'analyzer';
 const INPUT_CENTS_PER_TOKEN = 0.001_0;  // $5 / MTok × 2
 const OUTPUT_CENTS_PER_TOKEN = 0.005_0; // $25 / MTok × 2
 
+// Distillery is closed to new accounts (2026-10-16): it is not going public.
+// auth.users is shared with packing_list, so sign-ups cannot be switched off
+// project-wide, and an account existing proves nothing. The line is the
+// account's creation date. Only the routes that cost money check it;
+// /delete-account deliberately does not, so anyone can still delete.
+const ACCOUNTS_CREATED_BEFORE = Date.parse('2026-10-17T00:00:00Z');
+
+function isAdmitted(user) {
+  const created = Date.parse(user && user.created_at);
+  return Number.isFinite(created) && created < ACCOUNTS_CREATED_BEFORE;
+}
+
 let cachedToken = null;
 let tokenExpiry = 0;
 
@@ -201,6 +213,7 @@ async function handleRequest(request, env, corsHeaders) {
     } catch (e) {
       return new Response(JSON.stringify({ error: 'Unauthorized: ' + e.message }), { status: 401, headers: corsHeaders });
     }
+    if (!isAdmitted(user)) return new Response(JSON.stringify({ error: 'closed_to_new_accounts' }), { status: 403, headers: corsHeaders });
 
     let credits = null;
     if (billingEnabled) {
@@ -261,6 +274,7 @@ async function handleRequest(request, env, corsHeaders) {
     } catch (e) {
       return new Response(JSON.stringify({ error: 'sign_in_required' }), { status: 401, headers: corsHeaders });
     }
+    if (!isAdmitted(user)) return new Response(JSON.stringify({ error: 'closed_to_new_accounts' }), { status: 403, headers: corsHeaders });
 
     const { amount_cents, success_url, cancel_url } = await request.json();
     if (!amount_cents || amount_cents < 50) {
