@@ -35,9 +35,13 @@
   orphaned analyses/profiles rows. auth.audit_log_entries is empty on this
   project, so there is no audit record to point to.
 
-  NOT DONE:
-    - Found earlier, still open: probe-device ignores ANDROID_SERIAL; the
-      safe-area CSS error at startup; a stray [object Object] log.
+  OLD USER PROFILES PURGED: all 21 reddit_user rows in comment_cluster.analyses
+  deleted (20 Alex's, 1 another account's, 2026-05-18 to 2026-10-04), so no
+  stored inferences about named Reddit users remain.
+
+  NOTHING OPEN. The items carried from earlier (probe-device ignoring
+  ANDROID_SERIAL, the safe-area CSS error, a stray [object Object] log) went
+  with the Android code; the web page logs no errors.
 
 
   ============================================================================

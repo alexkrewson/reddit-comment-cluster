@@ -43,8 +43,8 @@ Every successful analysis is saved to a Supabase `analyses` table and shown in a
 - `reddit_post` — Claude analysis of a Reddit post's comments
 - `reddit_user` — Claude analysis of a Reddit user profile. No longer created:
   Analyze User was removed on 2026-10-16 (Reddit's policy forbids inferring
-  characteristics of its users). Old entries still replay; the user row now
-  offers Copy Raw Data and Download Raw Data only.
+  characteristics of its users), and every old entry was deleted the same day.
+  The user row now offers Copy Raw Data and Download Raw Data only.
 - `youtube_transcript` — raw transcript fetched from the transcriber service
 - `youtube_analysis` — Claude analysis of a YouTube transcript
 - `youtube_playlist` — every transcript in a playlist, concatenated (no Claude call)
